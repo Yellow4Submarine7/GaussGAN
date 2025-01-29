@@ -126,15 +126,15 @@ class QuantumShadowNoise(nn.Module):
         return noise
 
 class ClassicalNoise(nn.Module):
-    def __init__(self, z_dim: int=8):
+    def __init__(self, z_dim: int=10):
         super(ClassicalNoise, self).__init__()
         self.z_dim = z_dim
 
     def forward(self, batch_size: int):
-        return torch.rand(batch_size, self.z_dim)
+        return torch.randn(batch_size, self.z_dim)
 
 class MLPGenerator(nn.Module):
-    def __init__(self, z_dim=8, hidden_dims=[10], output_dim=2):
+    def __init__(self, hidden_dims, z_dim=8, output_dim=2 ):
         super(MLPGenerator, self).__init__()
         layers = []
         current_dim = z_dim
@@ -147,18 +147,23 @@ class MLPGenerator(nn.Module):
 
 
     def forward(self, z):
-        return self.model(z)
+        out = self.model(z)
+        #out = 10*torch.tanh(out)
+        return out
 
 
 class MLPDiscriminator(nn.Module):
-    def __init__(self, dataset, input_dim=2, hidden_dim=10, output_dim=1):
+    def __init__(self, hidden_dims, input_dim=2, output_dim=1):
         super(MLPDiscriminator, self).__init__()
-        self.first_linear = nn.Linear(input_dim, hidden_dim)
-        self.first_dropout = nn.Dropout(0.5)
-        self.second_linear = nn.Linear(hidden_dim, output_dim)
+        layers = []
+        current_dim = input_dim
+        for hdim in hidden_dims:
+            layers.append(nn.Linear(current_dim, hdim))
+            layers.append(nn.Tanh())
+            current_dim = hdim
+        layers.append(nn.Linear(current_dim, output_dim))
+        self.model = nn.Sequential(*layers)
 
-    def forward(self, x):
-        x = torch.relu(self.first_linear(x))
-        x = self.first_dropout(x)
-        x = torch.sigmoid(self.second_linear(x))
-        return x
+
+    def forward(self, z):
+        return self.model(z)

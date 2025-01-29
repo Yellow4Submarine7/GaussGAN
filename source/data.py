@@ -13,41 +13,41 @@ from tqdm import tqdm
 from .metrics import ALL_METRICS
 
 
-class GaussianDataset(Dataset):
+# class GaussianDataset(Dataset):
 
-    def __init__(self, n_samples, mean1, cov1, mean2, cov2):
-
-
-        # Generate 500 points from each distribution
-        points1 = np.random.multivariate_normal(mean1, cov1, n_samples)
-        points2 = np.random.multivariate_normal(mean2, cov2, n_samples)
-
-        # Combine the points into a single dataset
-        self.dataset = np.vstack((points1, points2))
+#     def __init__(self, n_samples, mean1, cov1, mean2, cov2):
 
 
-    def __len__(self):
-        """Returns the number of valid molecules in the dataset."""
-        return len(self.dataset)
+#         # Generate 500 points from each distribution
+#         points1 = np.random.multivariate_normal(mean1, cov1, n_samples)
+#         points2 = np.random.multivariate_normal(mean2, cov2, n_samples)
 
-    def __getitem__(self, idx):
-        """Retrieve a sample from the dataset by index."""
-        return self.dataset[idx]
+#         # Combine the points into a single dataset
+#         self.dataset = np.vstack((points1, points2))
 
 
-    def save(self, filename):
-        """Saves the dataset to a pickle file."""
-        with open(filename, "wb") as f:
-            pickle.dump(self, f)
-        print(f"Dataset saved to {filename}.")
+#     def __len__(self):
+#         """Returns the number of valid molecules in the dataset."""
+#         return len(self.dataset)
 
-    @classmethod
-    def load(cls, filename):
-        """Loads the dataset from a pickle file."""
-        with open(filename, "rb") as f:
-            dataset = pickle.load(f)
-        print(f"Dataset loaded from {filename}.")
-        return dataset
+#     def __getitem__(self, idx):
+#         """Retrieve a sample from the dataset by index."""
+#         return self.dataset[idx]
+
+
+#     def save(self, filename):
+#         """Saves the dataset to a pickle file."""
+#         with open(filename, "wb") as f:
+#             pickle.dump(self, f)
+#         print(f"Dataset saved to {filename}.")
+
+#     @classmethod
+#     def load(cls, filename):
+#         """Loads the dataset from a pickle file."""
+#         with open(filename, "rb") as f:
+#             dataset = pickle.load(f)
+#         print(f"Dataset loaded from {filename}.")
+#         return dataset
 
    
 

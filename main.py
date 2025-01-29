@@ -1,114 +1,23 @@
 import argparse
 from datetime import datetime
 from functools import partial
+import subprocess
+
 
 import mlflow
 import torch
+from torch.utils.data import TensorDataset
+
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import MLFlowLogger, WandbLogger
 
-from source.data import GaussianDataModule, GaussianDataset
+from source.data import GaussianDataModule #, GaussianDataset
 from source.model import GaussGan
 from source.nn import MLPDiscriminator, MLPGenerator, QuantumNoise, ClassicalNoise, QuantumShadowNoise
 
+from source.utils import parse_args
 
-def parse_args():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Train the MolGAN model on the gdb9 dataset"
-    )
-    parser.add_argument(
-        "--stage",
-        type=str,
-        default="train",
-        help="Stage to run ('train', 'test')",
-    )
-    parser.add_argument(
-        "--checkpoint_path",
-        type=str,
-        default=None,
-        help="Path to the checkpoint file",
-    )
-    parser.add_argument(
-        "--generator_type",
-        type=str,
-        default="classical",
-        help="Type of generator to use ('classical', 'quantum')",
-    )
-    parser.add_argument(
-        "--use_shadows",
-        type=bool,
-        default=False,  # or shadow
-        help="Use shadow noise generator for the quantum generator",
-    )
-    parser.add_argument(
-        "--data_path",
-        type=str,
-        default="./data/dataset.pkl",
-        help="Path to the Gaussian dataset file",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=32,
-        help="Batch size for training",
-    )
-    parser.add_argument(
-        "--max_epochs",
-        type=int,
-        default=200,
-        help="Maximum number of epochs to train",
-    )
-    parser.add_argument(
-        "--learning_rate",
-        type=float,
-        default=0.001,
-        help="Learning rate for the optimizer",
-    )
-    parser.add_argument(
-        "--grad_penalty",
-        type=float,
-        default=10.0,
-        help="Gradient penalty regularization factor",
-    )
-    parser.add_argument(
-        "--process_method",
-        type=str,
-        default="soft_gumbel",
-        help="Method to process the output probabilities ('soft_gumbel', 'hard_gumbel')",
-    )
-    parser.add_argument(
-        "--agg_method",
-        type=str,
-        default="prod",
-        help="Aggregation method for the rewards.",
-    )
-    parser.add_argument(
-        "--train_predictor_on_fake",
-        type=bool,
-        default=False,
-        help="Train the predictor on fake samples",
-    )
-    parser.add_argument(
-        "--n_critic",
-        type=int,
-        default=5,
-        help="Number of discriminator updates per generator update",
-    )
-    parser.add_argument(
-        "--accelerator",
-        type=str,
-        default="cpu",
-        help="Device to use",
-    )
-    parser.add_argument(
-        "--z_dim",
-        type=int,
-        default=8,
-        help="Dimension of the latent space",
-    )
-    return parser.parse_args()
 
 
 def main():
@@ -117,36 +26,54 @@ def main():
         "cuda" if args.accelerator == "gpu" and torch.cuda.is_available() else "cpu"
     )
 
-    # Enable MLflow autologging
-    mlflow.pytorch.autolog(checkpoint_save_best_only=False)
 
-    # Load data module
+    mean1 = torch.tensor([-6, 3]).float()
+    cov1 = torch.tensor([[3, 1], [1, 3]]).float()  # Valid covariance matrix
 
-    n_points = 1000
+    mean2 = torch.tensor([6, 3]).float()
+    cov2 = torch.tensor([[2, 0.5], [0.5, 2]]).float()  # Valid covariance matrix
 
-    # Parameters for the Gaussian distributions
-    mean1 = torch.tensor([-5, 0]).float()
-    cov1 = torch.tensor([[1, 0], [0, 1]]).float()  # Diagonal covariance
+    # Create MultivariateNormal distributions
+    dist1 = torch.distributions.MultivariateNormal(mean1, cov1)
+    dist2 = torch.distributions.MultivariateNormal(mean2, cov2)
 
-    mean2 = torch.tensor([5, 0]).float()
-    cov2 = torch.tensor([[1, 0], [0, 1]]).float()  # Diagonal covariance
-
-    inps1 = torch.randn(n_points, 2) @ cov1 + mean1
+    # Sample points from the distributions
+    n_points = args.dataset_size
+    inps1 = dist1.sample((n_points,))
     targs1 = -torch.ones(n_points, 1)
-    inps2 = torch.randn(n_points, 2) @ cov2 + mean2
+    inps2 = dist2.sample((n_points,))
     targs2 = torch.ones(n_points, 1)
-    from torch.utils.data import TensorDataset
+
+    # Combine the inputs and targets
+    inputs = torch.cat([inps1, inps2])
+    targets = torch.cat([targs1, targs2])
+
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(inps1[:, 0], inps1[:, 1], color='blue', label='Class -1')
+    plt.scatter(inps2[:, 0], inps2[:, 1], color='red', label='Class 1')
+    plt.xlabel('X1')
+    plt.ylabel('X2')
+    plt.legend()
+    plt.title('2D Scatter Plot of Gaussian Distributions')
+    plt.savefig("dataset.png")
+
     dataset = TensorDataset(
         torch.cat([inps1, inps2]), torch.cat([targs1, targs2])
     )
-    
     datamodule = GaussianDataModule(dataset, batch_size=args.batch_size)
-    #datamodule.setup()
+
+
+
+
+
 
     # Initialize networks
     if args.generator_type == "classical":
         G_part_1 = ClassicalNoise(z_dim=args.z_dim)
-    elif args.generator_type == "quantum_shadows":
+
+    elif args.generator_type == "quantum_samples":
         G_part_1 = QuantumNoise(
             z_dim=args.z_dim,
         )
@@ -154,49 +81,46 @@ def main():
         G_part_1 = QuantumShadowNoise(
             z_dim=args.z_dim,
         )
+    
     G_part_2 = MLPGenerator(
         z_dim=args.z_dim,
-        hidden_dims=[128, 64],
-        #use_conv=False
+        hidden_dims=4*[64],
     )
+
     G = torch.nn.Sequential(G_part_1, G_part_2)
-    # elif args.generator_type == "quantum":
-    #     G = QuantumGenerator(
-    #         dataset,
-    #         use_shadows=args.use_shadows,
-    #         z_dim=args.z_dim,
-    #     )
-    D = MLPDiscriminator(dataset)
-    V = MLPDiscriminator(dataset)
+    D = MLPDiscriminator(hidden_dims=4*[64],)
+    V = MLPDiscriminator(hidden_dims=[32, 32],)
     G.to(device)
     D.to(device)
     V.to(device)
+
     print("Nets created")
 
-    # Setup the MolGAN model
+    # Setup the GaussGan model
     model = GaussGan(
         G,
         D,
         V,
-        optimizer=partial(torch.optim.RMSprop, lr=args.learning_rate),
+        optimizer=partial(torch.optim.Adam, lr=args.learning_rate, betas=(0.9, 0.99)),
         grad_penalty=args.grad_penalty,
-        process_method=args.process_method,
+        killer=args.killer,
         n_critic=args.n_critic,
+        validation_samples=args.validation_samples,
     )
     model.to(device)
 
 
-    if args.checkpoint_path is not None:
-        # Load the best model
-        model = GaussGan.load_from_checkpoint(
-            "checkpoints/" + args.checkpoint_path + ".ckpt",
-            dataset=dataset,
-            generator=G,
-            discriminator=D,
-            predictor=V,
-            optimizer=partial(torch.optim.RMSprop, lr=args.learning_rate),
-        )
-        model.to(device)
+    # if args.checkpoint_path is not None:
+    #     # Load the best model
+    #     model = GaussGan.load_from_checkpoint(
+    #         "checkpoints/" + args.checkpoint_path + ".ckpt",
+    #         dataset=dataset,
+    #         generator=G,
+    #         discriminator=D,
+    #         predictor=V,
+    #         optimizer=partial(torch.optim.RMSprop, lr=args.learning_rate),
+    #     )
+    #     model.to(device)
 
 
     # Define the checkpoint callback
@@ -207,23 +131,17 @@ def main():
         filename = f"best-checkpoint-quantum-shadows-{current_date_time}"
     else:
         filename = f"best-checkpoint-quantum-no-shadows-{current_date_time}"
-    checkpoint_callback = ModelCheckpoint(
-        monitor="Aggregated_metric_during_validation",
-        save_top_k=1,
-        mode="max",
-        dirpath="checkpoints/",
-        filename=filename,
-        save_last=True,
-    )
 
-    mlflow_logger = MLFlowLogger(experiment_name="molgan")
+
+    mlflow_logger = MLFlowLogger(experiment_name="Default")
 
     trainer = Trainer(
         max_epochs=args.max_epochs,
         accelerator=args.accelerator,
         logger=mlflow_logger,
         log_every_n_steps=1,
-        callbacks=[checkpoint_callback],
+        limit_val_batches=1,
+        # callbacks=[checkpoint_callback],
     )
 
     if args.stage == "train":
@@ -234,7 +152,9 @@ def main():
         trainer.test(model=model, datamodule=datamodule)
 
 
+
 if __name__ == "__main__":
     main()
+    #subprocess.run(["python", "scripts/plot_gaussians.py"])
 
-    print("TODO implement class Generator so to make easily swtich from quantum to classical noise generator")
+    #print("TODO implement class Generator so to make easily swtich from quantum to classical noise generator")
