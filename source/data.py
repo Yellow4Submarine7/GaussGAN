@@ -13,21 +13,6 @@ from tqdm import tqdm
 from .metrics import ALL_METRICS
 
 
-
-
-
-
-
-
-
-# class GaussianSample(NamedTuple):
-#     mol: Chem.Mol
-#     smiles: str
-#     features: dict
-#     metrics: dict
-#     is_batched: bool = False
-
-
 class GaussianDataset(Dataset):
 
     def __init__(self, n_samples, mean1, cov1, mean2, cov2):

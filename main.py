@@ -10,7 +10,7 @@ from lightning.pytorch.loggers import MLFlowLogger, WandbLogger
 
 from source.data import GaussianDataModule, GaussianDataset
 from source.model import GaussGan
-from source.nn import MLPDiscriminator, MLPGenerator # , QuantumGenerator
+from source.nn import MLPDiscriminator, MLPGenerator, QuantumNoise, ClassicalNoise, QuantumShadowNoise
 
 
 def parse_args():
@@ -125,25 +125,41 @@ def main():
     n_points = 1000
 
     # Parameters for the Gaussian distributions
-    mean1 = [-5, 0]
-    cov1 = [[1, 0], [0, 1]]  # Diagonal covariance
+    mean1 = torch.tensor([-5, 0]).float()
+    cov1 = torch.tensor([[1, 0], [0, 1]]).float()  # Diagonal covariance
 
-    mean2 = [5, 0]
-    cov2 = [[1, 0], [0, 1]]  # Diagonal covariance
+    mean2 = torch.tensor([5, 0]).float()
+    cov2 = torch.tensor([[1, 0], [0, 1]]).float()  # Diagonal covariance
 
-
-    dataset = GaussianDataset(n_points, mean1, cov1, mean2, cov2)
-
+    inps1 = torch.randn(n_points, 2) @ cov1 + mean1
+    targs1 = -torch.ones(n_points, 1)
+    inps2 = torch.randn(n_points, 2) @ cov2 + mean2
+    targs2 = torch.ones(n_points, 1)
+    from torch.utils.data import TensorDataset
+    dataset = TensorDataset(
+        torch.cat([inps1, inps2]), torch.cat([targs1, targs2])
+    )
+    
     datamodule = GaussianDataModule(dataset, batch_size=args.batch_size)
-    datamodule.setup()
+    #datamodule.setup()
 
     # Initialize networks
     if args.generator_type == "classical":
-        G = MLPGenerator(
+        G_part_1 = ClassicalNoise(z_dim=args.z_dim)
+    elif args.generator_type == "quantum_shadows":
+        G_part_1 = QuantumNoise(
             z_dim=args.z_dim,
-            hidden_dims=[128, 64],
-            use_conv=False
         )
+    elif args.generator_type == "quantum_shadows":
+        G_part_1 = QuantumShadowNoise(
+            z_dim=args.z_dim,
+        )
+    G_part_2 = MLPGenerator(
+        z_dim=args.z_dim,
+        hidden_dims=[128, 64],
+        #use_conv=False
+    )
+    G = torch.nn.Sequential(G_part_1, G_part_2)
     # elif args.generator_type == "quantum":
     #     G = QuantumGenerator(
     #         dataset,
@@ -159,7 +175,6 @@ def main():
 
     # Setup the MolGAN model
     model = GaussGan(
-        dataset,
         G,
         D,
         V,
