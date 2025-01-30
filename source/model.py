@@ -1,6 +1,8 @@
 import tempfile
 from pathlib import Path
 
+from PIL import Image
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -133,15 +135,16 @@ class GaussGan(LightningModule):
 
         fake_data = self._generate_fake_data(self.validation_samples)
 
-        # Compute and log metrics on generated data
-        metrics_fake = self._compute_metrics(fake_data)
-        avg_metrics_fake = {
-            f"Validation_step_fake_data_{k}": np.mean(
-                [val for val in v if val is not None]
-            )
-            for k, v in metrics_fake.items()
-        }
-        self.log_dict(avg_metrics_fake, on_epoch=True, prog_bar=True, logger=True)
+        if self.killer==True:
+            # Compute and log metrics on generated data
+            metrics_fake = self._compute_metrics(fake_data)
+            avg_metrics_fake = {
+                f"Validation_step_fake_data_{k}": np.mean(
+                    [val for val in v if val is not None]
+                )
+                for k, v in metrics_fake.items()
+            }
+            self.log_dict(avg_metrics_fake, on_epoch=True, prog_bar=True, logger=True)
 
         csv_string = "x,y\n" + "\n".join([f"{row[0]},{row[1]}" for row in fake_data])
         try:
@@ -154,7 +157,6 @@ class GaussGan(LightningModule):
         except AttributeError:
             print("Could not log the CSV file as an artifact.")
 
-        import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
         ax.scatter(fake_data[:, 0].cpu().numpy(), fake_data[:, 1].cpu().numpy())
@@ -168,7 +170,6 @@ class GaussGan(LightningModule):
             plt.close(fig)
             # Log the image file as an artifact if logger supports it
             try:
-                from PIL import Image
                 img = Image.open(tmpfile.name)
                 self.logger.experiment.log_image(
                     image=img,

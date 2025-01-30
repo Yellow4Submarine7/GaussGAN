@@ -57,16 +57,16 @@ def parse_args():
         help="Learning rate for the optimizer",
     )
     parser.add_argument(
+        "--classical_generator_type",
+        type=str,
+        default="classicalnormal",
+        help="Distribution of the generator ('classicalnormal', 'classicaluniform')",
+    )
+    parser.add_argument(
         "--grad_penalty",
         type=float,
         default=10,
         help="Gradient penalty regularization factor of Wasserstain GAN",
-    )
-    parser.add_argument(
-        "--process_method",
-        type=str,
-        default="soft_gumbel",
-        help="Method to process the output probabilities ('soft_gumbel', 'hard_gumbel')",
     )
     parser.add_argument(
         "--agg_method",
@@ -77,13 +77,13 @@ def parse_args():
     parser.add_argument(
         "--n_critic",
         type=int,
-        default=2,
+        default=5,
         help="Number of discriminator updates per generator update",
     )
     parser.add_argument(
         "--dataset_size",
         type=int,
-        default=5000,
+        default=10000,
         help="Number of pints in the training set",
     )
     parser.add_argument(
@@ -101,13 +101,13 @@ def parse_args():
     parser.add_argument(
         "--z_dim",
         type=int,
-        default=100,
+        default=10,
         help="Dimension of the latent space",
     )
     parser.add_argument(
         "--validation_samples",
         type=int,
-        default=2000,
+        default=1000,
         help="Number of validation samples step",
     )
     return parser.parse_args()

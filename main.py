@@ -32,13 +32,12 @@ def plot_dataset(inps1, inps2):
     plt.title('2D Scatter Plot of Gaussian Distributions')
     plt.savefig("dataset.png")
 
-def generate_dataset(mean1, cov1, mean2, cov2):
+def generate_dataset(n_points, mean1, cov1, mean2, cov2):
     # Create MultivariateNormal distributions
     dist1 = torch.distributions.MultivariateNormal(mean1, cov1)
     dist2 = torch.distributions.MultivariateNormal(mean2, cov2)
 
     # Sample points from the distributions
-    n_points = args.dataset_size
     inps1 = dist1.sample((n_points,))
     targs1 = -torch.ones(n_points, 1)
     inps2 = dist2.sample((n_points,))
@@ -58,16 +57,31 @@ def main():
 
 
 
-    mean1 = torch.tensor([-6, 3]).float()
-    cov1 = torch.tensor([[2,0], [0, 2]]).float()  # Valid covariance matrix
+    # mean1 = torch.tensor([-6, 3]).float()
+    # cov1 = torch.tensor([[2,0], [0, 2]]).float()  # Valid covariance matrix
 
-    mean2 = torch.tensor([6, 3]).float()
-    cov2 = torch.tensor([[2, 0], [0, 2]]).float()  # Valid covariance matrix
+    # mean2 = torch.tensor([6, 3]).float()
+    # cov2 = torch.tensor([[2, 0], [0, 2]]).float()  # Valid covariance matrix
 
 
-    inps1, inps2, targs1, targs2, inputs, targets = generate_dataset(mean1, cov1, mean2, cov2)
-    plot_dataset(inps1, inps2)
+    # inps1, inps2, targs1, targs2, inputs, targets = generate_dataset(args.dataset_size, mean1, cov1, mean2, cov2)
+    # plot_dataset(inps1, inps2)
     
+
+    # Create dataset by sampling from a uniform distribution in the range [-10, 10]
+    inputs = 20 * torch.rand((args.dataset_size, 2)) - 10
+    targets = torch.zeros((args.dataset_size, 1))
+
+    
+    # plot the dataset
+    plt.figure(figsize=(8, 6))
+    plt.scatter(inputs[:, 0], inputs[:, 1], color='blue', label='Class -1')
+    plt.xlabel('X1')
+    plt.ylabel('X2')
+    plt.legend()
+    plt.title('2D Scatter Plot of Uniform Distributions')
+    plt.savefig("images/uniform_dataset.png")
+
 
     dataset = TensorDataset(
         inputs, targets
@@ -81,7 +95,7 @@ def main():
 
     # Initialize networks
     if args.generator_type == "classical":
-        G_part_1 = ClassicalNoise(z_dim=args.z_dim)
+        G_part_1 = ClassicalNoise(z_dim=args.z_dim, classical_generator_type=args.classical_generator_type)
 
     elif args.generator_type == "quantum_samples":
         G_part_1 = QuantumNoise(
@@ -94,12 +108,12 @@ def main():
     
     G_part_2 = MLPGenerator(
         z_dim=args.z_dim,
-        hidden_dims=4*[64],
+        hidden_dims=4*[128],
     )
 
     G = torch.nn.Sequential(G_part_1, G_part_2)
-    D = MLPDiscriminator(hidden_dims=4*[64],)
-    V = MLPDiscriminator(hidden_dims=[32, 32],)
+    D = MLPDiscriminator(hidden_dims=4*[128],)
+    V = MLPDiscriminator(hidden_dims=[1, 1],)
     G.to(device)
     D.to(device)
     V.to(device)
@@ -111,7 +125,7 @@ def main():
         G,
         D,
         V,
-        optimizer=partial(torch.optim.Adam, lr=args.learning_rate, betas=(0.9, 0.99)),
+        optimizer=partial(torch.optim.RAdam, lr=args.learning_rate, betas=(0.9, 0.99)),
         grad_penalty=args.grad_penalty,
         killer=args.killer,
         n_critic=args.n_critic,
@@ -143,7 +157,7 @@ def main():
         filename = f"best-checkpoint-quantum-no-shadows-{current_date_time}"
 
 
-    mlflow_logger = MLFlowLogger(experiment_name="Default")
+    mlflow_logger = MLFlowLogger(experiment_name="GaussGan")
 
     hparams = vars(args)
     mlflow_logger.log_hyperparams(hparams)
@@ -153,7 +167,7 @@ def main():
         accelerator=args.accelerator,
         logger=mlflow_logger,
         log_every_n_steps=1,
-        limit_val_batches=1,
+        limit_val_batches=3,
         # callbacks=[checkpoint_callback],
     )
 
