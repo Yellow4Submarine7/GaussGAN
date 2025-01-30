@@ -7,6 +7,8 @@ import subprocess
 import mlflow
 import torch
 from torch.utils.data import TensorDataset
+import matplotlib.pyplot as plt
+
 
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -19,20 +21,18 @@ from source.nn import MLPDiscriminator, MLPGenerator, QuantumNoise, ClassicalNoi
 from source.utils import parse_args
 
 
+def plot_dataset(inps1, inps2):
 
-def main():
-    args = parse_args()
-    device = torch.device(
-        "cuda" if args.accelerator == "gpu" and torch.cuda.is_available() else "cpu"
-    )
+    plt.figure(figsize=(8, 6))
+    plt.scatter(inps1[:, 0], inps1[:, 1], color='blue', label='Class -1')
+    plt.scatter(inps2[:, 0], inps2[:, 1], color='red', label='Class 1')
+    plt.xlabel('X1')
+    plt.ylabel('X2')
+    plt.legend()
+    plt.title('2D Scatter Plot of Gaussian Distributions')
+    plt.savefig("dataset.png")
 
-
-    mean1 = torch.tensor([-6, 3]).float()
-    cov1 = torch.tensor([[3, 1], [1, 3]]).float()  # Valid covariance matrix
-
-    mean2 = torch.tensor([6, 3]).float()
-    cov2 = torch.tensor([[2, 0.5], [0.5, 2]]).float()  # Valid covariance matrix
-
+def generate_dataset(mean1, cov1, mean2, cov2):
     # Create MultivariateNormal distributions
     dist1 = torch.distributions.MultivariateNormal(mean1, cov1)
     dist2 = torch.distributions.MultivariateNormal(mean2, cov2)
@@ -48,19 +48,29 @@ def main():
     inputs = torch.cat([inps1, inps2])
     targets = torch.cat([targs1, targs2])
 
-    import matplotlib.pyplot as plt
+    return inps1, inps2, targs1, targs2, inputs, targets
 
-    plt.figure(figsize=(8, 6))
-    plt.scatter(inps1[:, 0], inps1[:, 1], color='blue', label='Class -1')
-    plt.scatter(inps2[:, 0], inps2[:, 1], color='red', label='Class 1')
-    plt.xlabel('X1')
-    plt.ylabel('X2')
-    plt.legend()
-    plt.title('2D Scatter Plot of Gaussian Distributions')
-    plt.savefig("dataset.png")
+def main():
+    args = parse_args()
+    device = torch.device(
+        "cuda" if args.accelerator == "gpu" and torch.cuda.is_available() else "cpu"
+    )
+
+
+
+    mean1 = torch.tensor([-6, 3]).float()
+    cov1 = torch.tensor([[2,0], [0, 2]]).float()  # Valid covariance matrix
+
+    mean2 = torch.tensor([6, 3]).float()
+    cov2 = torch.tensor([[2, 0], [0, 2]]).float()  # Valid covariance matrix
+
+
+    inps1, inps2, targs1, targs2, inputs, targets = generate_dataset(mean1, cov1, mean2, cov2)
+    plot_dataset(inps1, inps2)
+    
 
     dataset = TensorDataset(
-        torch.cat([inps1, inps2]), torch.cat([targs1, targs2])
+        inputs, targets
     )
     datamodule = GaussianDataModule(dataset, batch_size=args.batch_size)
 
@@ -134,6 +144,9 @@ def main():
 
 
     mlflow_logger = MLFlowLogger(experiment_name="Default")
+
+    hparams = vars(args)
+    mlflow_logger.log_hyperparams(hparams)
 
     trainer = Trainer(
         max_epochs=args.max_epochs,

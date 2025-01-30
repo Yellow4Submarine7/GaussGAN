@@ -201,11 +201,8 @@ class GaussGan(LightningModule):
         fake_gaussians = fake_gaussians.detach()
         d_fake = self._apply_discriminator(fake_gaussians)
         d_real = self._apply_discriminator(batch[0])
-        #print("d_fake: ", d_fake)
-        #print("d_real: ", d_real)
-        # import pdb
-        # pdb.set_trace()
 
+        # thanks cedric
         d_loss = d_fake.mean() - d_real.mean()
 
         # Compute gradient penalty

@@ -41,25 +41,25 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,
+        default=16,
         help="Batch size for training",
     )
     parser.add_argument(
         "--max_epochs",
         type=int,
-        default=120,
+        default=100,
         help="Maximum number of epochs to train",
     )
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=0.001,
+        default=0.0001,
         help="Learning rate for the optimizer",
     )
     parser.add_argument(
         "--grad_penalty",
         type=float,
-        default=5.0,
+        default=10,
         help="Gradient penalty regularization factor of Wasserstain GAN",
     )
     parser.add_argument(
@@ -77,7 +77,7 @@ def parse_args():
     parser.add_argument(
         "--n_critic",
         type=int,
-        default=5,
+        default=2,
         help="Number of discriminator updates per generator update",
     )
     parser.add_argument(
