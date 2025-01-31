@@ -1,13 +1,35 @@
 import argparse
+from torch.utils.data import TensorDataset
+from source.data import GaussianDataModule
+import pickle
 
 
-import argparse
+def load_data(args):
+    if args.dataset_type == "UNIFORM":
+        with open("data/uniform.pickle", "rb") as f:
+            data = pickle.load(f)
+            gaussians = {}
+
+    elif args.dataset_type == "GAUSSIAN":
+        with open("data/gaussian.pickle", "rb") as f:
+            data = pickle.load(f)
+            gaussians = {
+                "centroids": [data["mean1"], data["mean2"]],
+                "covariances": [data["cov1"], data["cov2"]],
+                "weights": [0.5],
+            }
+
+    inputs, targets = data["inputs"], data["targets"]
+
+
+    dataset = TensorDataset(inputs, targets)
+    datamodule = GaussianDataModule(dataset, batch_size=args.batch_size)
+    return datamodule, gaussians
+
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Train the GaussGan model"
-    )
+    parser = argparse.ArgumentParser(description="Train the GaussGan model")
     parser.add_argument(
         "--stage",
         type=str,
@@ -23,14 +45,8 @@ def parse_args():
     parser.add_argument(
         "--generator_type",
         type=str,
-        default="classical",
-        help="Type of generator to use ('classical', 'quantum')",
-    )
-    parser.add_argument(
-        "--use_shadows",
-        type=bool,
-        default=False,  # or shadow
-        help="Use shadow noise generator for the quantum generator",
+        default="classical_normal",
+        help="Type of generator to use ('classical_uniform', 'classical_normal', 'quantum_samples', 'quantum_shadows')",
     )
     parser.add_argument(
         "--data_path",
@@ -47,20 +63,26 @@ def parse_args():
     parser.add_argument(
         "--max_epochs",
         type=int,
-        default=100,
+        default=50,
         help="Maximum number of epochs to train",
     )
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=0.0001,
+        default=0.01,
         help="Learning rate for the optimizer",
     )
     parser.add_argument(
-        "--classical_generator_type",
+        "--dataset_type",
         type=str,
-        default="classicalnormal",
-        help="Distribution of the generator ('classicalnormal', 'classicaluniform')",
+        default="GAUSSIAN",
+        help="Distribution of the generator ('GAUSSIAN', 'UNIFORM')",
+    )
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default="GaussGAN",
+        help="Name of the experiment",
     )
     parser.add_argument(
         "--grad_penalty",
@@ -77,7 +99,7 @@ def parse_args():
     parser.add_argument(
         "--n_critic",
         type=int,
-        default=5,
+        default=8,
         help="Number of discriminator updates per generator update",
     )
     parser.add_argument(

@@ -12,6 +12,15 @@ from tqdm import tqdm
 
 from .metrics import ALL_METRICS
 
+# from lightning.pytorch.trainer.connectors.data_connector import DataConnector
+
+# import warnings
+# # Add this before any other imports
+# warnings.filterwarnings(
+#     "ignore",
+#     message="*num_workers*",
+#     category=UserWarning
+# )
 
 # class GaussianDataset(Dataset):
 
@@ -95,7 +104,7 @@ class GaussianDataModule(LightningDataModule):
             self.train_dataset,
             batch_size=self.hparams.batch_size,
             shuffle=True,
-            #collate_fn=collate_fn,
+            num_workers=0 #collate_fn=collate_fn,
         )
 
     def val_dataloader(self):
@@ -103,6 +112,7 @@ class GaussianDataModule(LightningDataModule):
         return DataLoader(
             self.val_dataset,
             batch_size=self.hparams.batch_size,
+            num_workers=0,
             #collate_fn=collate_fn,
         )
 
@@ -111,5 +121,6 @@ class GaussianDataModule(LightningDataModule):
         return DataLoader(
             self.test_dataset,
             batch_size=self.hparams.batch_size,
+            num_workers=0,
             #collate_fn=collate_fn,
         )

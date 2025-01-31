@@ -8,6 +8,7 @@ import numpy as np
 import torch
 
 from torchmetrics import Metric
+from sklearn.mixture import GaussianMixture
 
 
 class GaussianMetric(Metric):
@@ -16,7 +17,7 @@ class GaussianMetric(Metric):
     def __init__(self, dist_sync_on_step=False):
         """Initializes state for metric computation."""
         super().__init__(dist_sync_on_step=dist_sync_on_step)
-        # 
+        #
         self.add_state("score", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
@@ -46,10 +47,28 @@ class IsPositive(GaussianMetric):
         return [-1 if point[0] < 0 else 1 for point in points]
 
 
+class LogLikelihood(GaussianMetric):
+    """Calculates the uniqueness of molecules within a batch."""
+
+    def __init__(self, centroids, cov_matrices, weights, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+
+        # Create GaussianMixture model
+
+        self.gmm = GaussianMixture(n_components=len(centroids), covariance_type="full")
+
+        self.gmm.means_ = np.array(centroids)
+        self.gmm.covariances_ = np.array(cov_matrices)
+        self.gmm.weights_ = weights
+        self.gmm.precisions_cholesky_ = np.linalg.cholesky(
+            np.linalg.inv(self.gmm.covariances_)
+        )
+
+    def compute_score(self, points):
+        return self.gmm.score_samples(points)
 
 
 ALL_METRICS = {
     "IsPositive": IsPositive,
-
+    "LogLikelihood": LogLikelihood,
 }
-

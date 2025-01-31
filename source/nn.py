@@ -126,16 +126,17 @@ class QuantumShadowNoise(nn.Module):
         return noise
 
 class ClassicalNoise(nn.Module):
-    def __init__(self, z_dim: int, classical_generator_type: str):
+    def __init__(self, z_dim: int, generator_type: str):
         super(ClassicalNoise, self).__init__()
         self.z_dim = z_dim
-        self.classical_generator_type = classical_generator_type
+        self.generator_type = generator_type
 
 
     def forward(self, batch_size: int):
-        if self.classical_generator_type == "classicaluniform":
+
+        if self.generator_type == "classical_uniform":
             return torch.rand(batch_size, self.z_dim)
-        elif self.classical_generator_type == "classicalnormal":
+        elif self.generator_type == "classical_normal":
             return torch.randn(batch_size, self.z_dim)
 
 class MLPGenerator(nn.Module):
@@ -153,7 +154,6 @@ class MLPGenerator(nn.Module):
 
     def forward(self, z):
         out = self.model(z)
-        #out = 10*torch.tanh(out)
         return out
 
 
