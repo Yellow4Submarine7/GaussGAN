@@ -4,12 +4,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-experiment_id = "0"
 client = mlflow.tracking.MlflowClient()
 
-experiment = client.get_experiment_by_name("default")
-# experiment_id = experiment.experiment_id
-runs = client.search_runs(experiment_ids=[experiment_id], order_by=["attribute.start_time desc"], max_results=1)
+experiment = client.get_experiment_by_name("GaussGAN")
+print("Experiment ID:", experiment.experiment_id)
+runs = client.search_runs(experiment_ids=[experiment.experiment_id], order_by=["attribute.start_time desc"], max_results=1)
+
+print("Found", len(runs), "runs")
 run_id = runs[0].info.run_id
 
 
@@ -51,7 +52,7 @@ for idx, csv_path in enumerate(csv_artifacts):
 
 fig.suptitle(f"Run ID: {run_id}", fontsize=16)
 
-filename = f"training_{experiment_id}_{run_id}.png"
+filename = f"training_{experiment.experiment_id}_{run_id}.png"
 print(f"Saving plot to {filename}")
 plt.savefig(filename)
 plt.savefig("training.png")

@@ -43,7 +43,7 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
 
 
-set_seed(42)
+set_seed(43)
 
 
 def main():
@@ -153,5 +153,4 @@ def main():
 
 
 if __name__ == "__main__":
-    #mp.set_start_method('spawn', force=True)
     main()

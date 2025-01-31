@@ -144,7 +144,7 @@ class GaussGan(LightningModule):
 
     def validation_step(self, batch, batch_idx):
 
-        fake_data = self._generate_fake_data(self.validation_samples)
+        fake_data = self._generate_fake_data(self.validation_samples).detach()
 
         # Compute and log metrics on generated data
         metrics_fake = self._compute_metrics(fake_data)

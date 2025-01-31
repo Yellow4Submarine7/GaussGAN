@@ -30,6 +30,54 @@ def load_data(args):
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Train the GaussGan model")
+
+    parser.add_argument(
+        "--z_dim",
+        type=int,
+        default=50,
+        help="Dimension of the latent space",
+    )
+    parser.add_argument(
+        "--generator_type",
+        type=str,
+        default="classical_normal",
+        help="Type of generator to use ('classical_uniform', 'classical_normal', 'quantum_samples', 'quantum_shadows')",
+    )
+    parser.add_argument(
+        "--max_epochs",
+        type=int,
+        default=100,
+        help="Maximum number of epochs to train",
+    )
+    parser.add_argument(
+        "--grad_penalty",
+        type=float,
+        default=10,
+        help="Gradient penalty regularization factor of Wasserstain GAN",
+    )
+    parser.add_argument(
+        "--n_critic",
+        type=int,
+        default=5,
+        help="Number of discriminator updates per generator update",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=16,
+        help="Batch size for training",
+    )
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=0.001,
+        help="Learning rate for the optimizer",
+    )
+
+
+
+
+
     parser.add_argument(
         "--stage",
         type=str,
@@ -42,36 +90,14 @@ def parse_args():
         default=None,
         help="Path to the checkpoint file",
     )
-    parser.add_argument(
-        "--generator_type",
-        type=str,
-        default="classical_normal",
-        help="Type of generator to use ('classical_uniform', 'classical_normal', 'quantum_samples', 'quantum_shadows')",
-    )
+
     parser.add_argument(
         "--data_path",
         type=str,
         default="./data/dataset.pkl",
         help="Path to the Gaussian dataset file",
     )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=16,
-        help="Batch size for training",
-    )
-    parser.add_argument(
-        "--max_epochs",
-        type=int,
-        default=50,
-        help="Maximum number of epochs to train",
-    )
-    parser.add_argument(
-        "--learning_rate",
-        type=float,
-        default=0.01,
-        help="Learning rate for the optimizer",
-    )
+
     parser.add_argument(
         "--dataset_type",
         type=str,
@@ -84,30 +110,20 @@ def parse_args():
         default="GaussGAN",
         help="Name of the experiment",
     )
-    parser.add_argument(
-        "--grad_penalty",
-        type=float,
-        default=10,
-        help="Gradient penalty regularization factor of Wasserstain GAN",
-    )
+
     parser.add_argument(
         "--agg_method",
         type=str,
         default="prod",
         help="Aggregation method for the rewards.",
     )
-    parser.add_argument(
-        "--n_critic",
-        type=int,
-        default=8,
-        help="Number of discriminator updates per generator update",
-    )
-    parser.add_argument(
-        "--dataset_size",
-        type=int,
-        default=10000,
-        help="Number of pints in the training set",
-    )
+
+    # parser.add_argument(
+    #     "--dataset_size",
+    #     type=int,
+    #     default=10000,
+    #     help="Number of pints in the training set",
+    # )
     parser.add_argument(
         "--accelerator",
         type=str,
@@ -121,15 +137,9 @@ def parse_args():
         help="Kill one gaussian",
     )
     parser.add_argument(
-        "--z_dim",
-        type=int,
-        default=10,
-        help="Dimension of the latent space",
-    )
-    parser.add_argument(
         "--validation_samples",
         type=int,
-        default=1000,
+        default=500,
         help="Number of validation samples step",
     )
     return parser.parse_args()
