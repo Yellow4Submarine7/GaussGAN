@@ -10,20 +10,22 @@ grad_penalty: 10.0
 n_critic: 5
 checkpoint_path: "checkpoints/"
 agg_method: prod
-max_epochs: 100
+max_epochs: 200
 batch_size: 16
 learning_rate: 0.001
 
-
+nn_gen: "[16,16]"   
+nn_disc: "[16,16]"   
+nn_validator: "[16,16]"   
 
 #data:
-dataset_type: NORMAL
+dataset_type: "NORMAL"
 
 #metrics:
-metrics: "['IsPositive', 'LogLikelihood']"
+metrics: ['IsPositive', 'LogLikelihood']
 
 
 #misc:
 accelerator: cpu
-validation_samples: 100
+validation_samples: 400
 seed: 42

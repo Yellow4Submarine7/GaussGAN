@@ -2,7 +2,7 @@ import argparse
 from datetime import datetime
 from functools import partial
 import subprocess
-
+import ast
 import yaml
 import pickle
 import mlflow
@@ -47,13 +47,15 @@ def main():
         final_args = yaml.safe_load(file)
         cmd_args = parser.parse_args()
 
-        update_dict = {k: v for k, v in vars(cmd_args).items() if final_args[k] != v}
+        update_dict = {k: v for k, v in vars(cmd_args).items() if v is not None}
         run_instance = "_".join(f"{k}-{v}" for k, v in update_dict.items())
         random_number = random.randint(0, 10000)
         run_instance = f"{random_number}_" + run_instance
         final_args.update(update_dict)
 
     set_seed(final_args["seed"])
+
+    # pdb.set_trace()
 
     device = torch.device(
         "cuda"
@@ -86,16 +88,16 @@ def main():
         raise ValueError("Invalid generator type")
     G_part_2 = MLPGenerator(
         z_dim=final_args["z_dim"],
-        hidden_dims=4 * [128],
+        hidden_dims=ast.literal_eval(final_args["nn_gen"]),
     )
     G = torch.nn.Sequential(G_part_1, G_part_2)
 
     D = MLPDiscriminator(
-        hidden_dims=4 * [128],
+        hidden_dims=ast.literal_eval(final_args["nn_disc"]),
     )
 
     V = MLPDiscriminator(
-        hidden_dims=4 * [128],
+        hidden_dims=ast.literal_eval(final_args["nn_validator"]),
     )
 
     G.to(device)

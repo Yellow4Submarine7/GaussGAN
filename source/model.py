@@ -40,38 +40,8 @@ class GaussGan(LightningModule):
         self.grad_penalty = kwargs.get("grad_penalty", 10.0)
         self.gaussians = kwargs.get("gaussians", {})
 
-    # def configure_optimizers(self):
-
-    #     optimizer = torch.optim.Adam(
-    #         self.parameters(), lr=self.hparams["learning_rate"]
-    #     )
-
-    #     # If scheduler=FIXED, keep the LR specified in the config file
-    #     if self.hparams.scheduler == "FIXED":
-    #         return {"optimizer": optimizer}
-
-    #     if self.hparams.scheduler == "ReduceLROnPlateau":
-    #         # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.ReduceLROnPlateau.html
-    #         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    #             optimizer, mode="min", factor=0.1, patience=10, verbose=True
-    #         )
-    #         return {"optimizer": optimizer, "lr_scheduler": scheduler}
-
-    #     if self.hparams.scheduler == "StepLR":
-    #         # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.StepLR.html
-    #         scheduler = torch.optim.lr_scheduler.StepLR(
-    #             optimizer, step_size=500, gamma=0.96
-    #         )
-    #         return {"optimizer": optimizer, "lr_scheduler": scheduler}
-
-    #     if self.hparams.scheduler == "CosineAnnealingLR":
-    #         # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
-    #         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-    #         return {"optimizer": optimizer, "lr_scheduler": scheduler}
-
-    #     raise ValueError("Invalid scheduler specified")
-
     def configure_optimizers(self):
+        # pdb.set_trace()
         g_optim = self.optimizer(self.generator.parameters())
         d_optim = self.optimizer(self.discriminator.parameters())
         p_optim = self.optimizer(self.predictor.parameters())
