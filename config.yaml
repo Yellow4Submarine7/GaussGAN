@@ -1,0 +1,29 @@
+#general:
+z_dim: 3
+generator_type: classical_normal
+stage: train
+experiment_name: GaussGAN
+killer: false
+
+#training:
+grad_penalty: 10.0
+n_critic: 5
+checkpoint_path: "checkpoints/"
+agg_method: prod
+max_epochs: 100
+batch_size: 16
+learning_rate: 0.001
+
+
+
+#data:
+dataset_type: NORMAL
+
+#metrics:
+metrics: "['IsPositive', 'LogLikelihood']"
+
+
+#misc:
+accelerator: cpu
+validation_samples: 100
+seed: 42

@@ -17,21 +17,8 @@ from .metrics import ALL_METRICS
 
 
 class GaussGan(LightningModule):
-    def __init__(
-        self,
-        generator,
-        discriminator,
-        predictor,
-        optimizer,
-        *,
-        n_critic=5,
-        gradient_penalty=10.0,
-        killer=False,
-        metrics=[],
-        gaussians={},
-        validation_samples=1000,
-    ):
 
+    def __init__(self, generator, discriminator, predictor, optimizer, **kwargs):
         super().__init__()
         self.automatic_optimization = False  # Disable automatic optimization
         self.save_hyperparameters(
@@ -42,17 +29,47 @@ class GaussGan(LightningModule):
                 "optimizer",
             ],
         )
-        # self.dataset = dataset
         self.generator = generator
         self.discriminator = discriminator
         self.predictor = predictor
         self.optimizer = optimizer
-        self.metrics = metrics
-        self.killer = killer
-        self.validation_samples = validation_samples
-        self.n_critic = n_critic
-        self.gradient_penalty = gradient_penalty
-        self.gaussians = gaussians
+        self.metrics = kwargs.get("metrics", [])
+        self.killer = kwargs.get("killer", False)
+        self.validation_samples = kwargs.get("validation_samples", 1000)
+        self.n_critic = kwargs.get("n_critic", 5)
+        self.grad_penalty = kwargs.get("grad_penalty", 10.0)
+        self.gaussians = kwargs.get("gaussians", {})
+
+    # def configure_optimizers(self):
+
+    #     optimizer = torch.optim.Adam(
+    #         self.parameters(), lr=self.hparams["learning_rate"]
+    #     )
+
+    #     # If scheduler=FIXED, keep the LR specified in the config file
+    #     if self.hparams.scheduler == "FIXED":
+    #         return {"optimizer": optimizer}
+
+    #     if self.hparams.scheduler == "ReduceLROnPlateau":
+    #         # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.ReduceLROnPlateau.html
+    #         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    #             optimizer, mode="min", factor=0.1, patience=10, verbose=True
+    #         )
+    #         return {"optimizer": optimizer, "lr_scheduler": scheduler}
+
+    #     if self.hparams.scheduler == "StepLR":
+    #         # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.StepLR.html
+    #         scheduler = torch.optim.lr_scheduler.StepLR(
+    #             optimizer, step_size=500, gamma=0.96
+    #         )
+    #         return {"optimizer": optimizer, "lr_scheduler": scheduler}
+
+    #     if self.hparams.scheduler == "CosineAnnealingLR":
+    #         # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
+    #         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    #         return {"optimizer": optimizer, "lr_scheduler": scheduler}
+
+    #     raise ValueError("Invalid scheduler specified")
 
     def configure_optimizers(self):
         g_optim = self.optimizer(self.generator.parameters())
@@ -195,7 +212,7 @@ class GaussGan(LightningModule):
             except AttributeError:
                 print("Could not log the image file as an artifact.")
 
-        return fake_data
+        return {"fake_data": fake_data, "metrics": avg_metrics_fake}
 
     def _generate_fake_data(self, batch_size):
         fake_gaussians = self.generator(batch_size)
@@ -224,8 +241,8 @@ class GaussGan(LightningModule):
             True
         )
         d_inter = self._apply_discriminator(fake_inter)
-        gradient_penalty = self._calculate_gradient_penalty(d_inter, fake_inter)
-        d_loss += self.gradient_penalty * gradient_penalty
+        grad_penalty_score = self._calculate_gradient_penalty(d_inter, fake_inter)
+        d_loss += self.grad_penalty * grad_penalty_score
         return d_loss
 
     def _compute_generator_loss(self, batch):

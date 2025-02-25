@@ -3,6 +3,7 @@ from datetime import datetime
 from functools import partial
 import subprocess
 
+import yaml
 import pickle
 import mlflow
 import torch
@@ -16,6 +17,8 @@ from lightning.pytorch.loggers import MLFlowLogger
 
 # from source.data import GaussianDataModule #, GaussianDataset
 from source.model import GaussGan
+from source.utils import set_seed, load_data
+
 
 from source.nn import (
     MLPDiscriminator,
@@ -26,65 +29,75 @@ from source.nn import (
 )
 
 
-
-from source.utils import parse_args, load_data
+from source.utils import return_parser, load_data
 import random
 import numpy as np
 
 
 import torch.multiprocessing as mp
 
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
-set_seed(43)
+from source.utils import set_seed
 
 
 def main():
 
-    args = parse_args()
+    parser = return_parser()
+
+    with open("config.yaml", "r") as file:
+        final_args = yaml.safe_load(file)
+        cmd_args = parser.parse_args()
+
+        update_dict = {k: v for k, v in vars(cmd_args).items() if final_args[k] != v}
+        run_instance = "_".join(f"{k}-{v}" for k, v in update_dict.items())
+        random_number = random.randint(0, 10000)
+        run_instance = f"{random_number}_" + run_instance
+        final_args.update(update_dict)
+
+    set_seed(final_args["seed"])
 
     device = torch.device(
-        "cuda" if args.accelerator == "gpu" and torch.cuda.is_available() else "cpu"
+        "cuda"
+        if final_args["accelerator"] == "gpu" and torch.cuda.is_available()
+        else (
+            "mps"
+            if final_args["accelerator"] == "mps" and torch.backends.mps.is_available()
+            else "cpu"
+        )
     )
 
-    datamodule, gaussians = load_data(args)
-
+    datamodule, gaussians = load_data(final_args)
 
     if (
-        args.generator_type == "classical_uniform"
-        or args.generator_type == "classical_normal"
+        final_args["generator_type"] == "classical_uniform"
+        or final_args["generator_type"] == "classical_normal"
     ):
-        G_part_1 = ClassicalNoise(z_dim=args.z_dim, generator_type=args.generator_type)
-    elif args.generator_type == "quantum_sampels":
-        G_part_1 = QuantumNoise(
-            z_dim=args.z_dim,
+        G_part_1 = ClassicalNoise(
+            z_dim=final_args["z_dim"], generator_type=final_args["generator_type"]
         )
-    elif args.generator_type == "quantum_shadows":
+    elif final_args["generator_type"] == "quantum_sampels":
+        G_part_1 = QuantumNoise(
+            z_dim=final_args["z_dim"],
+        )
+    elif final_args["generator_type"] == "quantum_shadows":
         G_part_1 = QuantumShadowNoise(
-            z_dim=args.z_dim,
+            z_dim=final_args["z_dim"],
         )
     else:
         raise ValueError("Invalid generator type")
-
     G_part_2 = MLPGenerator(
-        z_dim=args.z_dim,
+        z_dim=final_args["z_dim"],
         hidden_dims=4 * [128],
     )
-
     G = torch.nn.Sequential(G_part_1, G_part_2)
+
     D = MLPDiscriminator(
         hidden_dims=4 * [128],
     )
+
     V = MLPDiscriminator(
-        hidden_dims=[1, 1],
+        hidden_dims=4 * [128],
     )
+
     G.to(device)
     D.to(device)
     V.to(device)
@@ -96,59 +109,51 @@ def main():
         G,
         D,
         V,
-        optimizer=partial(torch.optim.RAdam, lr=args.learning_rate, betas=(0.9, 0.99)),
-        killer=args.killer,
-        n_critic=args.n_critic,
-        gradient_penalty=args.grad_penalty,
-        metrics=["IsPositive", "LogLikelihood"],
+        optimizer=partial(
+            torch.optim.RAdam, lr=final_args["learning_rate"], betas=(0.9, 0.99)
+        ),
+        killer=final_args["killer"],
+        n_critic=final_args["n_critic"],
+        grad_penalty=final_args["grad_penalty"],
+        metrics=list(final_args["metrics"]),
         gaussians=gaussians,
-        validation_samples=args.validation_samples,
+        validation_samples=final_args["validation_samples"],
     )
     model.to(device)
 
-    # if args.checkpoint_path is not None:
-    #     # Load the best model
-    #     model = GaussGan.load_from_checkpoint(
-    #         "checkpoints/" + args.checkpoint_path + ".ckpt",
-    #         dataset=dataset,
-    #         generator=G,
-    #         discriminator=D,
-    #         predictor=V,
-    #         optimizer=partial(torch.optim.RMSprop, lr=args.learning_rate),
-    #     )
-    #     model.to(device)
-
-    # Define the checkpoint callback
-    current_date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-
-    filename = f"best-checkpoint-{args.generator_type}-{current_date_time}"
-
-    checkpoint_callback = ModelCheckpoint(
-        dirpath="checkpoints",
-        filename=filename,
-        save_top_k=-1,  # Save all checkpoints
-        every_n_epochs=5,  # Save every 5 epochs
+    mlflow_logger = MLFlowLogger(
+        experiment_name=final_args["experiment_name"], run_name=run_instance
     )
-
-    mlflow_logger = MLFlowLogger(experiment_name=args.experiment_name)
     run_id = mlflow_logger.run_id
+
     print(f"---Run ID: {run_id}")
 
-    hparams = vars(args)
+    filename = f"run_id-{run_id}"
+
+    # LOGGING WITH MLFLOW
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="checkpoints",
+        filename=filename + "-{epoch:03d}",  # Add epoch number to filename
+        save_top_k=-1,  # Save all checkpoints
+        every_n_epochs=5,  # Save every 5 epochs
+        save_last=True,  # Save the last checkpoint
+    )
+
+    hparams = final_args
     mlflow_logger.log_hyperparams(hparams)
 
     trainer = Trainer(
-        max_epochs=args.max_epochs,
-        accelerator=args.accelerator,
+        max_epochs=final_args["max_epochs"],
+        accelerator=final_args["accelerator"],
         logger=mlflow_logger,
         log_every_n_steps=1,
         limit_val_batches=3,
         callbacks=[checkpoint_callback],
     )
 
-    if args.stage == "train":
+    if final_args["stage"] == "train":
         trainer.fit(model=model, datamodule=datamodule)
-    elif args.stage == "test":
+    elif final_args["stage"] == "test":
         trainer.test(model=model, datamodule=datamodule)
 
 

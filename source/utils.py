@@ -2,16 +2,27 @@ import argparse
 from torch.utils.data import TensorDataset
 from source.data import GaussianDataModule
 import pickle
+import torch
+import random
+import numpy as np
+
+
+def set_seed(seed):
+    random.seed(seed)  # 1
+    np.random.seed(seed)  # 2
+    torch.manual_seed(seed)  # 3
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)  # 4
 
 
 def load_data(args):
-    if args.dataset_type == "UNIFORM":
+    if args["dataset_type"] == "UNIFORM":
         with open("data/uniform.pickle", "rb") as f:
             data = pickle.load(f)
             gaussians = {}
 
-    elif args.dataset_type == "NORMAL":
-        with open("data/gaussian.pickle", "rb") as f:
+    elif args["dataset_type"] == "NORMAL":
+        with open("data/normal.pickle", "rb") as f:
             data = pickle.load(f)
             gaussians = {
                 "centroids": [data["mean1"], data["mean2"]],
@@ -22,11 +33,11 @@ def load_data(args):
     inputs, targets = data["inputs"], data["targets"]
 
     dataset = TensorDataset(inputs, targets)
-    datamodule = GaussianDataModule(dataset, batch_size=args.batch_size)
+    datamodule = GaussianDataModule(dataset, batch_size=args["batch_size"])
     return datamodule, gaussians
 
 
-def parse_args():
+def return_parser():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Train the GaussGan model")
 
@@ -82,28 +93,28 @@ def parse_args():
     parser.add_argument(
         "--checkpoint_path",
         type=str,
-        default=None,
-        help="Path to the checkpoint file",
-    )
-
-    parser.add_argument(
-        "--data_path",
-        type=str,
-        default="./data/dataset.pkl",
-        help="Path to the Gaussian dataset file",
+        default="checkpoints/",
+        help="Path to the checkpoint directory",
     )
 
     parser.add_argument(
         "--dataset_type",
         type=str,
         default="NORMAL",
-        help="Distribution of the generator ('NORMAL', 'UNIFORM')",
+        help="Distribution of the generator ('NORMAL', 'UNIFORM') ",
     )
     parser.add_argument(
         "--experiment_name",
         type=str,
         default="GaussGAN",
         help="Name of the experiment",
+    )
+
+    parser.add_argument(
+        "--metrics",
+        nargs="+",  # This allows multiple values
+        default=["IsPositive", "LogLikelihood"],
+        help="List of metrics to compute",
     )
 
     parser.add_argument(
@@ -131,4 +142,4 @@ def parse_args():
         default=100,
         help="Number of validation samples step",
     )
-    return parser.parse_args()
+    return parser
