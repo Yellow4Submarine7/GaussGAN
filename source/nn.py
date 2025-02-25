@@ -141,7 +141,7 @@ class ClassicalNoise(nn.Module):
 
 
 class MLPGenerator(nn.Module):
-    def __init__(self, hidden_dims, z_dim=8, output_dim=2):
+    def __init__(self, hidden_dims, z_dim, output_dim=2):
         super(MLPGenerator, self).__init__()
         layers = []
         current_dim = z_dim
@@ -157,34 +157,18 @@ class MLPGenerator(nn.Module):
         return out
 
 
-# class MLPDiscriminator(nn.Module):
-#     def __init__(self, hidden_dims, input_dim=2, output_dim=1):
-#         super(MLPDiscriminator, self).__init__()
-#         layers = []
-#         current_dim = input_dim
-#         for hdim in hidden_dims:
-#             layers.append(nn.Linear(current_dim, hdim))
-#             layers.append(nn.Tanh())
-#             current_dim = hdim
-#         layers.append(nn.Linear(current_dim, output_dim))
-#         self.model = nn.Sequential(*layers)
-
-
-#     def forward(self, z):
-#         return self.model(z)
-
-
 class MLPDiscriminator(nn.Module):
     def __init__(self, hidden_dims, input_dim=2, output_dim=1):
         super(MLPDiscriminator, self).__init__()
-        self.model = nn.Sequential(
-            nn.Linear(input_dim, 64),  # Input: 2D vector -> Hidden layer
-            nn.LeakyReLU(0.2),
-            nn.Linear(64, 64),  # Hidden layer
-            nn.LeakyReLU(0.2),
-            nn.Linear(64, output_dim),  # Output: Probability
-            nn.Sigmoid(),
-        )
+        layers = []
+        current_dim = input_dim
+        for hdim in hidden_dims:
+            layers.append(nn.Linear(current_dim, hdim))
+            layers.append(nn.ReLU())
+            current_dim = hdim
+        layers.append(nn.Linear(current_dim, output_dim))
+        self.model = nn.Sequential(*layers)
 
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, z):
+        out = self.model(z)
+        return out
