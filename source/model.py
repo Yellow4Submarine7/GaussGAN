@@ -111,7 +111,6 @@ class GaussGan(LightningModule):
                 logger=True,
                 batch_size=batch[0].size(0),
                 sync_dist=True,
-
             )
             for key, value in p_aux.items():
                 self.log(
@@ -154,8 +153,15 @@ class GaussGan(LightningModule):
             )
             for k, v in metrics_fake.items()
         }
-        self.log_dict(avg_metrics_fake, on_epoch=True, on_step=False, prog_bar=True,  logger=True,                 batch_size=batch[0].size(0),
-                sync_dist=True)
+        self.log_dict(
+            avg_metrics_fake,
+            on_epoch=True,
+            on_step=False,
+            prog_bar=True,
+            logger=True,
+            batch_size=batch[0].size(0),
+            sync_dist=True,
+        )
 
         csv_string = "x,y\n" + "\n".join([f"{row[0]},{row[1]}" for row in fake_data])
         try:

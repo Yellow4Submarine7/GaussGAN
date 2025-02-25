@@ -7,7 +7,6 @@ import re
 import pdb
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Hyperparameter tuning of GaussGAN with Optuna"
@@ -42,7 +41,8 @@ def objective(trial):
         str(z_dim),
         "--learning_rate",
         str(learning_rate),
-        "--experiment_name", "GaussGAN-tuna",
+        "--experiment_name",
+        "GaussGAN-tuna",
     ]
 
     # Run the command and capture the output
@@ -66,7 +66,6 @@ def objective(trial):
 
     max_log_likelihood = run.data.metrics["ValidationStep_FakeData_LogLikelihood"]
 
-
     return max_log_likelihood
 
 
@@ -79,10 +78,7 @@ if __name__ == "__main__":
             f"Trial {trial.number} finished with value: {trial.value} and parameters: {trial.params}"
         )
 
-
-    study.optimize(
-        objective, n_trials=args.n_trials, callbacks=[print_callback]
-    )
+    study.optimize(objective, n_trials=args.n_trials, callbacks=[print_callback])
 
     print("Best hyperparameters: ", study.best_params)
     print("Best value: ", study.best_value)

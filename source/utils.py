@@ -10,7 +10,7 @@ def load_data(args):
             data = pickle.load(f)
             gaussians = {}
 
-    elif args.dataset_type == "GAUSSIAN":
+    elif args.dataset_type == "NORMAL":
         with open("data/gaussian.pickle", "rb") as f:
             data = pickle.load(f)
             gaussians = {
@@ -20,7 +20,6 @@ def load_data(args):
             }
 
     inputs, targets = data["inputs"], data["targets"]
-
 
     dataset = TensorDataset(inputs, targets)
     datamodule = GaussianDataModule(dataset, batch_size=args.batch_size)
@@ -34,7 +33,7 @@ def parse_args():
     parser.add_argument(
         "--z_dim",
         type=int,
-        default=50,
+        default=3,
         help="Dimension of the latent space",
     )
     parser.add_argument(
@@ -74,10 +73,6 @@ def parse_args():
         help="Learning rate for the optimizer",
     )
 
-
-
-
-
     parser.add_argument(
         "--stage",
         type=str,
@@ -101,8 +96,8 @@ def parse_args():
     parser.add_argument(
         "--dataset_type",
         type=str,
-        default="GAUSSIAN",
-        help="Distribution of the generator ('GAUSSIAN', 'UNIFORM')",
+        default="NORMAL",
+        help="Distribution of the generator ('NORMAL', 'UNIFORM')",
     )
     parser.add_argument(
         "--experiment_name",
@@ -118,12 +113,6 @@ def parse_args():
         help="Aggregation method for the rewards.",
     )
 
-    # parser.add_argument(
-    #     "--dataset_size",
-    #     type=int,
-    #     default=10000,
-    #     help="Number of pints in the training set",
-    # )
     parser.add_argument(
         "--accelerator",
         type=str,
@@ -139,7 +128,7 @@ def parse_args():
     parser.add_argument(
         "--validation_samples",
         type=int,
-        default=500,
+        default=100,
         help="Number of validation samples step",
     )
     return parser.parse_args()

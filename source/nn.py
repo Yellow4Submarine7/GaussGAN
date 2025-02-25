@@ -125,12 +125,12 @@ class QuantumShadowNoise(nn.Module):
         noise = torch.matmul(noise, self.coeffs)
         return noise
 
+
 class ClassicalNoise(nn.Module):
     def __init__(self, z_dim: int, generator_type: str):
         super(ClassicalNoise, self).__init__()
         self.z_dim = z_dim
         self.generator_type = generator_type
-
 
     def forward(self, batch_size: int):
 
@@ -139,8 +139,9 @@ class ClassicalNoise(nn.Module):
         elif self.generator_type == "classical_normal":
             return torch.randn(batch_size, self.z_dim)
 
+
 class MLPGenerator(nn.Module):
-    def __init__(self, hidden_dims, z_dim=8, output_dim=2 ):
+    def __init__(self, hidden_dims, z_dim=8, output_dim=2):
         super(MLPGenerator, self).__init__()
         layers = []
         current_dim = z_dim
@@ -150,7 +151,6 @@ class MLPGenerator(nn.Module):
             current_dim = hdim
         layers.append(nn.Linear(current_dim, output_dim))
         self.model = nn.Sequential(*layers)
-
 
     def forward(self, z):
         out = self.model(z)
@@ -173,17 +173,18 @@ class MLPGenerator(nn.Module):
 #     def forward(self, z):
 #         return self.model(z)
 
+
 class MLPDiscriminator(nn.Module):
     def __init__(self, hidden_dims, input_dim=2, output_dim=1):
         super(MLPDiscriminator, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 64),          # Input: 2D vector -> Hidden layer
+            nn.Linear(input_dim, 64),  # Input: 2D vector -> Hidden layer
             nn.LeakyReLU(0.2),
-            nn.Linear(64, 64),         # Hidden layer
+            nn.Linear(64, 64),  # Hidden layer
             nn.LeakyReLU(0.2),
-            nn.Linear(64, output_dim),          # Output: Probability
-            nn.Sigmoid()
+            nn.Linear(64, output_dim),  # Output: Probability
+            nn.Sigmoid(),
         )
-    
+
     def forward(self, x):
         return self.model(x)

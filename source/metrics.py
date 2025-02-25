@@ -66,19 +66,22 @@ class LogLikelihood(GaussianMetric):
 
     def compute_score(self, points):
 
-
         # Filter out points with NaN values
         # points = np.array(points)
         points = points.cpu().numpy()
         nan_indices = np.isnan(points).any(axis=1)
 
         points = points[~nan_indices]
-        #import pdb
-        #pdb.set_trace()
-        #points = points[~np.isnan(points).any(axis=1)]
+        # import pdb
+        # pdb.set_trace()
+        # points = points[~np.isnan(points).any(axis=1)]
 
-
-        return self.gmm.score_samples(points)
+        try:
+            return_value = self.gmm.score_samples(points)
+        except Exception as e:
+            warnings.warn(f"Error during GMM score computation: {e}")
+            return_value = np.zeros(len(points))
+        return return_value
 
 
 ALL_METRICS = {
