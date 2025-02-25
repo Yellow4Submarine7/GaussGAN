@@ -76,7 +76,7 @@ if __name__ == "__main__":
             args.dataset_size, mean1, cov1, mean2, cov2
         )
 
-        with open("data/gaussian.pickle", "wb") as f:
+        with open("data/normal.pickle", "wb") as f:
             pickle.dump(
                 {
                     "inputs": inputs,
