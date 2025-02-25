@@ -16,6 +16,7 @@ def set_seed(seed):
 
 
 def load_data(args):
+
     if args["dataset_type"] == "UNIFORM":
         with open("data/uniform.pickle", "rb") as f:
             data = pickle.load(f)
@@ -44,102 +45,108 @@ def return_parser():
     parser.add_argument(
         "--z_dim",
         type=int,
-        default=3,
         help="Dimension of the latent space",
     )
     parser.add_argument(
         "--generator_type",
         type=str,
-        default="classical_normal",
         help="Type of generator to use ('classical_uniform', 'classical_normal', 'quantum_samples', 'quantum_shadows')",
     )
     parser.add_argument(
         "--max_epochs",
         type=int,
-        default=100,
         help="Maximum number of epochs to train",
     )
     parser.add_argument(
         "--grad_penalty",
         type=float,
-        default=10,
         help="Gradient penalty regularization factor of Wasserstain GAN",
     )
     parser.add_argument(
         "--n_critic",
         type=int,
-        default=5,
         help="Number of discriminator updates per generator update",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=16,
         help="Batch size for training",
     )
     parser.add_argument(
         "--learning_rate",
         type=float,
-        default=0.001,
         help="Learning rate for the optimizer",
     )
 
     parser.add_argument(
         "--stage",
         type=str,
-        default="train",
         help="Stage to run ('train', 'test')",
     )
     parser.add_argument(
         "--checkpoint_path",
         type=str,
-        default="checkpoints/",
         help="Path to the checkpoint directory",
     )
 
     parser.add_argument(
         "--dataset_type",
         type=str,
-        default="NORMAL",
         help="Distribution of the generator ('NORMAL', 'UNIFORM') ",
     )
     parser.add_argument(
         "--experiment_name",
         type=str,
-        default="GaussGAN",
         help="Name of the experiment",
     )
 
     parser.add_argument(
         "--metrics",
         nargs="+",  # This allows multiple values
-        default=["IsPositive", "LogLikelihood"],
         help="List of metrics to compute",
     )
 
     parser.add_argument(
         "--agg_method",
         type=str,
-        default="prod",
         help="Aggregation method for the rewards.",
     )
 
     parser.add_argument(
         "--accelerator",
         type=str,
-        default="cpu",
         help="Device to use",
     )
     parser.add_argument(
         "--killer",
         type=bool,
-        default=False,
         help="Kill one gaussian",
     )
     parser.add_argument(
         "--validation_samples",
         type=int,
-        default=100,
         help="Number of validation samples step",
     )
+
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help="Random seed for reproducibility",
+    )
+    parser.add_argument(
+        "--nn_gen",
+        type=str,
+        help="Neural network architecture for the generator",
+    )
+    parser.add_argument(
+        "--nn_disc",
+        type=str,
+        help="Neural network architecture for the discriminator",
+    )
+    parser.add_argument(
+        "--nn_validator",
+        type=str,
+        help="Neural network architecture for the validator",
+    )
+
     return parser
