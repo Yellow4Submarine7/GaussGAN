@@ -27,12 +27,12 @@ def plot_dataset(inps1, inps2):
 
     plt.figure(figsize=(8, 6))
     plt.scatter(inps1[:, 0], inps1[:, 1], color="blue", label="Class -1")
-    plt.scatter(inps2[:, 0], inps2[:, 1], color="red", label="Class 1")
+    plt.scatter(inps2[:, 0], inps2[:, 1], color="red", label="Class +1")
     plt.xlabel("X1")
     plt.ylabel("X2")
     plt.legend()
     plt.title("2D Scatter Plot of Gaussian Distributions")
-    plt.savefig("dataset.png")
+    plt.savefig("images/gaussian_dataset.png")
 
 
 def plot_uniform(inputs):
@@ -63,7 +63,10 @@ if __name__ == "__main__":
         help="Type of dataset to generate",
     )
     parser.add_argument(
-        "--dataset_size", type=int, default=1000, help="Number of points in the dataset"
+        "--dataset_size",
+        type=int,
+        default=10000,
+        help="Number of points in the dataset",
     )
     args = parser.parse_args()
 
