@@ -69,6 +69,8 @@ def objective(trial):
         non_linearity,
         "--grad_penalty",
         str(grad_penalty),
+        "--accelerator",
+        "gpu",
     ]
 
     # Run the command and capture the output
