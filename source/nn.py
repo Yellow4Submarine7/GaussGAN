@@ -141,13 +141,15 @@ class ClassicalNoise(nn.Module):
 
 
 class MLPGenerator(nn.Module):
-    def __init__(self, hidden_dims, z_dim, output_dim=2):
+    def __init__(self, non_linearity, hidden_dims, z_dim, output_dim=2):
         super(MLPGenerator, self).__init__()
         layers = []
+        non_linearity = getattr(nn, non_linearity)
+
         current_dim = z_dim
         for hdim in hidden_dims:
             layers.append(nn.Linear(current_dim, hdim))
-            layers.append(nn.ReLU())
+            layers.append(nn.Sigmoid())
             current_dim = hdim
         layers.append(nn.Linear(current_dim, output_dim))
         self.model = nn.Sequential(*layers)
@@ -158,13 +160,15 @@ class MLPGenerator(nn.Module):
 
 
 class MLPDiscriminator(nn.Module):
-    def __init__(self, hidden_dims, input_dim=2, output_dim=1):
+    def __init__(self, non_linearity, hidden_dims, input_dim=2, output_dim=1):
         super(MLPDiscriminator, self).__init__()
         layers = []
+        non_linearity = getattr(nn, non_linearity)
+
         current_dim = input_dim
         for hdim in hidden_dims:
             layers.append(nn.Linear(current_dim, hdim))
-            layers.append(nn.ReLU())
+            layers.append(nn.Sigmoid())
             current_dim = hdim
         layers.append(nn.Linear(current_dim, output_dim))
         self.model = nn.Sequential(*layers)

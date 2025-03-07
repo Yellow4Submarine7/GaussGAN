@@ -1,5 +1,6 @@
 checkpoints/*
 mlruns/*
+images/* 
 
 # Python
 __pycache__/

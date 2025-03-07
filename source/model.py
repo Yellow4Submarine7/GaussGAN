@@ -39,6 +39,7 @@ class GaussGan(LightningModule):
         self.n_critic = kwargs.get("n_critic", 5)
         self.grad_penalty = kwargs.get("grad_penalty", 10.0)
         self.gaussians = kwargs.get("gaussians", {})
+        self.non_linearity = kwargs.get("non_linearity", False)  # :(
 
     def configure_optimizers(self):
         # pdb.set_trace()

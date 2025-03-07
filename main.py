@@ -87,16 +87,19 @@ def main():
     else:
         raise ValueError("Invalid generator type")
     G_part_2 = MLPGenerator(
+        non_linearity=final_args["non_linearity"],
         z_dim=final_args["z_dim"],
         hidden_dims=ast.literal_eval(final_args["nn_gen"]),
     )
     G = torch.nn.Sequential(G_part_1, G_part_2)
 
     D = MLPDiscriminator(
+        non_linearity=final_args["non_linearity"],
         hidden_dims=ast.literal_eval(final_args["nn_disc"]),
     )
 
     V = MLPDiscriminator(
+        non_linearity=final_args["non_linearity"],
         hidden_dims=ast.literal_eval(final_args["nn_validator"]),
     )
 
@@ -112,7 +115,9 @@ def main():
         D,
         V,
         optimizer=partial(
-            torch.optim.RAdam, lr=final_args["learning_rate"], betas=(0.9, 0.99)
+            # torch.optim.RAdam, lr=final_args["learning_rate"], betas=(0.9, 0.99)
+            torch.optim.Adam,
+            lr=final_args["learning_rate"],
         ),
         killer=final_args["killer"],
         n_critic=final_args["n_critic"],
@@ -120,6 +125,9 @@ def main():
         metrics=list(final_args["metrics"]),
         gaussians=gaussians,
         validation_samples=final_args["validation_samples"],
+        non_linearity=final_args[
+            "non_linearity"
+        ],  # code stinks, we don't need to pass it here, is only to save this
     )
     model.to(device)
 

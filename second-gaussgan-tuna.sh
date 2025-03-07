@@ -1,8 +1,7 @@
-
 #!/bin/bash
 
 # First, create the MLflow experiment if it doesn't exist
-python - <<EOF
+python - <<'EOF'
 import mlflow
 from mlflow.exceptions import MlflowException
 
@@ -23,15 +22,15 @@ def setup_experiment(experiment_name):
         print(f"Error setting up experiment: {e}")
         exit(1)
 
-setup_experiment("GaussGAN-Search")
+setup_experiment("Big-GaussGAN-Search")
 EOF
 
-LEARNING_RATES=(0.001 0.01 0.1)
-SEED=(0 1 2 3)
-NCRITIC=(2 4 6 8)
-NN_GEN=("[16,16]" "[32,32]")
-NN_DISC=("[16,16]" "[32,32]")
-Z_DIM=(9)
+LEARNING_RATES=(0.01 0.001 0.0001)
+SEED=(0 1 2 3 4 5 6)
+NCRITIC=(3 4 5 6 8)
+NN_GEN=('[32,32]' '[32,64]' '[64,64]' '[128,128]' ) 
+NN_DISC=('[32,32]' '[32,64]' '[64,64]' '[128,128]' )
+Z_DIM=(3 5 10)
 
 # Create a function to run the python script
 run_experiment() {
@@ -43,17 +42,17 @@ run_experiment() {
     local z_dim=$6
 
     python main.py \
-        --max_epochs 400 \
-        --learning_rate "$lr" \
+        --max_epochs 150 \
         --seed "$seed" \
         --n_critic "$nc" \
         --nn_gen "$nn_gen" \
         --nn_disc "$nn_disc" \
-        --experiment_name "GaussGAN-Search" \
-        --z_dim "$z_dim"
+        --experiment_name "Big-GaussGAN-Search" \
+        --z_dim "$z_dim" \
+       --learning_rate "$lr" \
 }
 
 export -f run_experiment
 
 # Generate the combinations and run them in parallel
-parallel -j 7 run_experiment ::: "${LEARNING_RATES[@]}" ::: "${SEED[@]}" ::: "${NCRITIC[@]}" ::: "${NN_GEN[@]}" ::: "${NN_DISC[@]}"  ::: "${Z_DIM[@]}"
+parallel -j 7 run_experiment ::: "${LEARNING_RATES[@]}" ::: "${SEED[@]}" ::: "${NCRITIC[@]}" ::: "${NN_GEN[@]}" ::: "${NN_DISC[@]}" ::: "${Z_DIM[@]}"
