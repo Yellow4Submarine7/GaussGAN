@@ -64,7 +64,8 @@ run_experiment() {
         --z_dim "$z_dim" \
         --learning_rate "$lr" \
         --non_linearity "$non_linearity" \
-        --grad_penalty "$gp"
+        --grad_penalty "$gp" \
+        --accelerator cuda
 }
 
 export -f run_experiment

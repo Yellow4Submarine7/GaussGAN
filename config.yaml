@@ -28,6 +28,6 @@ metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence']
 
 
 #misc:
-accelerator: mps
+accelerator: cpu
 validation_samples: 500
 seed: 41
