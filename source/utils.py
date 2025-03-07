@@ -148,5 +148,10 @@ def return_parser():
         type=str,
         help="Neural network architecture for the validator",
     )
+    parser.add_argument(
+        "--non_linearity",
+        type=str,
+        help="Non-linear activation function to use in neural networks",
+    )
 
     return parser

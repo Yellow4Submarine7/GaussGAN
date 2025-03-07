@@ -29,5 +29,5 @@ metrics: ['IsPositive', 'LogLikelihood']
 
 #misc:
 accelerator: cpu
-validation_samples: 400
+validation_samples: 500
 seed: 41

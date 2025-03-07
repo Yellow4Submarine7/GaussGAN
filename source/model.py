@@ -174,26 +174,26 @@ class GaussGan(LightningModule):
         except AttributeError:
             print("Could not log the CSV file as an artifact.")
 
-        fig, ax = plt.subplots()
-        ax.scatter(fake_data[:, 0].cpu().numpy(), fake_data[:, 1].cpu().numpy())
-        ax.set_xlim(-10, 10)
-        ax.set_ylim(-10, 10)
-        ax.set_title(f"Epoch {self.current_epoch + 1}")
+        # fig, ax = plt.subplots()
+        # ax.scatter(fake_data[:, 0].cpu().numpy(), fake_data[:, 1].cpu().numpy())
+        # ax.set_xlim(-10, 10)
+        # ax.set_ylim(-10, 10)
+        # ax.set_title(f"Epoch {self.current_epoch + 1}")
 
-        # Save the plot to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
-            plt.savefig(tmpfile.name)
-            plt.close(fig)
-            # Log the image file as an artifact if logger supports it
-            try:
-                img = Image.open(tmpfile.name)
-                self.logger.experiment.log_image(
-                    image=img,
-                    artifact_file=f"scatter_plot_epoch_{self.current_epoch:04d}.png",
-                    run_id=self.logger.run_id,
-                )
-            except AttributeError:
-                print("Could not log the image file as an artifact.")
+        # # Save the plot to a temporary file
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
+        #     plt.savefig(tmpfile.name)
+        #     plt.close(fig)
+        #     # Log the image file as an artifact if logger supports it
+        #     try:
+        #         img = Image.open(tmpfile.name)
+        #         self.logger.experiment.log_image(
+        #             image=img,
+        #             artifact_file=f"scatter_plot_epoch_{self.current_epoch:04d}.png",
+        #             run_id=self.logger.run_id,
+        #         )
+        #     except AttributeError:
+        #         print("Could not log the image file as an artifact.")
 
         return {"fake_data": fake_data, "metrics": avg_metrics_fake}
 
