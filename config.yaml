@@ -28,6 +28,6 @@ metrics: ['IsPositive', 'LogLikelihood']
 
 
 #misc:
-accelerator: cpu
+accelerator: mps
 validation_samples: 500
 seed: 41

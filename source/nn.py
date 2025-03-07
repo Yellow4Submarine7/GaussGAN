@@ -127,17 +127,23 @@ class QuantumShadowNoise(nn.Module):
 
 
 class ClassicalNoise(nn.Module):
-    def __init__(self, z_dim: int, generator_type: str):
-        super(ClassicalNoise, self).__init__()
+    def __init__(self, z_dim, generator_type):
+        super().__init__()
         self.z_dim = z_dim
         self.generator_type = generator_type
+        # Create a dummy parameter to track the device
+        self.register_buffer("dummy", torch.zeros(1))
 
-    def forward(self, batch_size: int):
+    def forward(self, batch_size):
+        # Get the device from the dummy parameter
+        device = self.dummy.device
 
-        if self.generator_type == "classical_uniform":
-            return torch.rand(batch_size, self.z_dim)
-        elif self.generator_type == "classical_normal":
-            return torch.randn(batch_size, self.z_dim)
+        if self.generator_type == "classical_normal":
+            return torch.randn(batch_size, self.z_dim, device=device)
+        elif self.generator_type == "classical_uniform":
+            return torch.rand(batch_size, self.z_dim, device=device) * 2 - 1
+        else:
+            raise ValueError(f"Unknown generator type: {self.generator_type}")
 
 
 class MLPGenerator(nn.Module):

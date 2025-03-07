@@ -198,8 +198,17 @@ class GaussGan(LightningModule):
         return {"fake_data": fake_data, "metrics": avg_metrics_fake}
 
     def _generate_fake_data(self, batch_size):
+        # Convert batch_size from tensor to int if needed
+        if isinstance(batch_size, torch.Tensor):
+            batch_size = batch_size.item()
+
+        # Only pass batch_size to the generator
         fake_gaussians = self.generator(batch_size)
-        fake_gaussians = fake_gaussians.to(self.device)
+
+        # Ensure the output is on the same device as the model
+        if fake_gaussians.device != self.device:
+            fake_gaussians = fake_gaussians.to(self.device)
+
         return fake_gaussians
 
     def _apply_discriminator(self, x):
