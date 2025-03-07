@@ -64,6 +64,19 @@ class GaussGan(LightningModule):
         return torch.mean((dydx_l2norm - 1) ** 2)
 
     def training_step(self, batch, batch_idx):
+
+        if np.all(np.isnan(batch)):
+            # se tutto sta nan, skippa e non plottare..
+            self.log(
+                "TrainingSkipped",
+                1,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            return
+
         # Access the optimizers
         g_optim, d_optim, p_optim = self.optimizers()
         # data, labels = batch
