@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from lightning import LightningModule
-from rdkit import Chem
 from torch import nn
 import pdb
 import warnings
@@ -64,9 +63,9 @@ class GaussGan(LightningModule):
         return torch.mean((dydx_l2norm - 1) ** 2)
 
     def training_step(self, batch, batch_idx):
+        data_gaussians, _ = batch
 
-        if np.all(np.isnan(batch)):
-            # se tutto sta nan, skippa e non plottare..
+        if torch.isnan(data_gaussians).all():
             self.log(
                 "TrainingSkipped",
                 1,

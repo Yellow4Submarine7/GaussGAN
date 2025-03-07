@@ -4,10 +4,8 @@ from typing import NamedTuple
 import numpy as np
 import torch
 from lightning import LightningDataModule
-from rdkit import Chem, RDLogger
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch_geometric.data import Data
-from torchdrug.data import Molecule
 from tqdm import tqdm
 
 from .metrics import ALL_METRICS
@@ -55,7 +53,7 @@ class GaussianDataModule(LightningDataModule):
             self.train_dataset,
             batch_size=self.hparams.batch_size,
             shuffle=True,
-            num_workers=0 #collate_fn=collate_fn,
+            num_workers=0,  # collate_fn=collate_fn,
         )
 
     def val_dataloader(self):
@@ -64,7 +62,7 @@ class GaussianDataModule(LightningDataModule):
             self.val_dataset,
             batch_size=self.hparams.batch_size,
             num_workers=0,
-            #collate_fn=collate_fn,
+            # collate_fn=collate_fn,
         )
 
     def test_dataloader(self):
@@ -73,5 +71,5 @@ class GaussianDataModule(LightningDataModule):
             self.test_dataset,
             batch_size=self.hparams.batch_size,
             num_workers=0,
-            #collate_fn=collate_fn,
+            # collate_fn=collate_fn,
         )

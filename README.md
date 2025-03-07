@@ -21,7 +21,7 @@ This guide provides instructions on how to train and test the GaussGAN model usi
 
 2. **Install dependencies:**
    ```bash
-   pip install torch lightning mlflow optuna pennylane
+   pip install torch lightning mlflow optuna pennylane torch-geometric
    ```
 
 ## Command-Line Arguments
