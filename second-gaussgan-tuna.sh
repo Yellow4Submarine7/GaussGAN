@@ -22,14 +22,26 @@ setup_experiment("Big-GaussGAN-Search")
 EOF
 
 # Define arrays with parameter combinations
-LEARNING_RATES=(0.01 0.001 0.0001)
+# LEARNING_RATES=(0.01 0.001 0.0001)
+# SEED=(0 1 2 3 4 5 6)
+# NCRITIC=(3 4 5 6 8)
+# NN_GEN=("[32,32]" "[32,64]" "[64,64]" "[128,128]" "[256,256]")
+# NN_DISC=("[32,32]" "[32,64]" "[64,64]" "[128,128]" "[256,256]")
+# Z_DIM=(3 5 10 12)
+# NON_LINEARITY=("ReLU" "LeakyReLU" "Tanh" "Sigmoid")
+# GRAD_PENALTIES=(5 10 15)
+LEARNING_RATES=(0.001)        # 0.001 0.0001)
 SEED=(0 1 2 3 4 5 6)
-NCRITIC=(3 4 5 6 8)
+NCRITIC=(3 5) # 6 8)
 NN_GEN=("[32,32]" "[32,64]" "[64,64]" "[128,128]" "[256,256]")
 NN_DISC=("[32,32]" "[32,64]" "[64,64]" "[128,128]" "[256,256]")
-Z_DIM=(3 5 10 12)
-NON_LINEARITY=("ReLU" "LeakyReLU" "Tanh" "Sigmoid")
-GRAD_PENALTIES=(5 10 15)
+Z_DIM=(3 10) # 12)
+NON_LINEARITY=("ReLU") # "LeakyReLU" "Tanh" "Sigmoid")
+GRAD_PENALTIES=(10) # 10 15)
+
+
+
+
 
 # Create a function to run the python script
 run_experiment() {
