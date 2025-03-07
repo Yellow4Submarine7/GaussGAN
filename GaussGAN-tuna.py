@@ -43,14 +43,16 @@ def objective(trial):
     non_linearity = trial.suggest_categorical(
         "non_linearity", ["ReLU", "LeakyReLU", "Tanh", "Sigmoid"]
     )
-    grad_penalty = trial.suggest_categorical("grad_penalty", [5, 10, 15])
+    # grad_penalty = trial.suggest_categorical("grad_penalty", [5, 10, 15])
+    grad_penalty = trial.suggest_categorical("grad_penalty", [10])
 
     # Build command to run
     cmd = [
         "python",
         "main.py",
         "--max_epochs",
-        str(args.max_epochs),
+        # str(args.max_epochs),
+        str(50),
         "--seed",
         str(seed),
         "--n_critic",
@@ -70,7 +72,7 @@ def objective(trial):
         "--grad_penalty",
         str(grad_penalty),
         "--accelerator",
-        "gpu",
+        "cpu",
     ]
 
     # Run the command and capture the output
@@ -98,9 +100,9 @@ def objective(trial):
     client = mlflow.tracking.MlflowClient()
     run = client.get_run(run_id)
 
-    max_log_likelihood = run.data.metrics["ValidationStep_FakeData_KLDivergence"]
+    max_kld = run.data.metrics["ValidationStep_FakeData_KLDivergence"]
 
-    return max_log_likelihood
+    return max_kld
 
 
 if __name__ == "__main__":
@@ -116,7 +118,7 @@ if __name__ == "__main__":
         objective,
         n_trials=args.n_trials,
         callbacks=[print_callback],
-        n_jobs=5,  # Use all available CPU cores (-1), or specify a number like 4
+        n_jobs=3,  # Use all available CPU cores (-1), or specify a number like 4
     )
 
     print("Best hyperparameters: ", study.best_params)

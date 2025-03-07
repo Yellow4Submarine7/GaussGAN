@@ -31,7 +31,7 @@ EOF
 # NON_LINEARITY=("ReLU" "LeakyReLU" "Tanh" "Sigmoid")
 # GRAD_PENALTIES=(5 10 15)
 LEARNING_RATES=(0.001)        # 0.001 0.0001)
-SEED=(0 1 2 3 4 5 6)
+SEED=(0 1 2 3 4 5)
 NCRITIC=(3 5) # 6 8)
 NN_GEN=("[32,32]" "[32,64]" "[64,64]" "[128,128]" "[256,256]")
 NN_DISC=("[32,32]" "[32,64]" "[64,64]" "[128,128]" "[256,256]")
@@ -65,7 +65,7 @@ run_experiment() {
         --learning_rate "$lr" \
         --non_linearity "$non_linearity" \
         --grad_penalty "$gp" \
-        --accelerator cuda
+        --accelerator cpu
 }
 
 export -f run_experiment
