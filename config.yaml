@@ -24,7 +24,7 @@ non_linearity: "Sigmoid" # ReLU or Sigmoid or Tanh
 dataset_type: "NORMAL"
 
 #metrics:
-metrics: ['IsPositive', 'LogLikelihood']
+metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence']
 
 
 #misc:

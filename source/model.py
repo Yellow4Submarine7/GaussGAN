@@ -142,17 +142,31 @@ class GaussGan(LightningModule):
             )
 
     def validation_step(self, batch, batch_idx):
-
         fake_data = self._generate_fake_data(self.validation_samples).detach()
 
         # Compute and log metrics on generated data
         metrics_fake = self._compute_metrics(fake_data)
-        avg_metrics_fake = {
-            f"ValidationStep_FakeData_{k}": np.mean(
-                [val for val in v if val is not None]
-            )
-            for k, v in metrics_fake.items()
-        }
+
+        # Add safety check for None values in metrics
+        avg_metrics_fake = {}
+        for k, v in metrics_fake.items():
+            if v is None:
+                # Handle None case - log a warning and skip or set to a default value
+                warnings.warn(f"Metric {k} returned None in validation_step")
+                avg_metrics_fake[f"ValidationStep_FakeData_{k}"] = float("nan")
+            elif not hasattr(v, "__iter__"):
+                # Handle non-iterable case (like a single number)
+                avg_metrics_fake[f"ValidationStep_FakeData_{k}"] = v
+            else:
+                # Original calculation for iterable results
+                valid_vals = [val for val in v if val is not None]
+                if valid_vals:
+                    avg_metrics_fake[f"ValidationStep_FakeData_{k}"] = np.mean(
+                        valid_vals
+                    )
+                else:
+                    avg_metrics_fake[f"ValidationStep_FakeData_{k}"] = float("nan")
+
         self.log_dict(
             avg_metrics_fake,
             on_epoch=True,
@@ -163,9 +177,9 @@ class GaussGan(LightningModule):
             sync_dist=True,
         )
 
+        # Rest of the method remains unchanged
         csv_string = "x,y\n" + "\n".join([f"{row[0]},{row[1]}" for row in fake_data])
         try:
-            # Attempt to log CSV file as an artifact if logger supports it
             self.logger.experiment.log_text(
                 text=csv_string,
                 artifact_file=f"gaussian_generated_epoch_{self.current_epoch:04d}.csv",
@@ -173,27 +187,6 @@ class GaussGan(LightningModule):
             )
         except AttributeError:
             print("Could not log the CSV file as an artifact.")
-
-        # fig, ax = plt.subplots()
-        # ax.scatter(fake_data[:, 0].cpu().numpy(), fake_data[:, 1].cpu().numpy())
-        # ax.set_xlim(-10, 10)
-        # ax.set_ylim(-10, 10)
-        # ax.set_title(f"Epoch {self.current_epoch + 1}")
-
-        # # Save the plot to a temporary file
-        # with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
-        #     plt.savefig(tmpfile.name)
-        #     plt.close(fig)
-        #     # Log the image file as an artifact if logger supports it
-        #     try:
-        #         img = Image.open(tmpfile.name)
-        #         self.logger.experiment.log_image(
-        #             image=img,
-        #             artifact_file=f"scatter_plot_epoch_{self.current_epoch:04d}.png",
-        #             run_id=self.logger.run_id,
-        #         )
-        #     except AttributeError:
-        #         print("Could not log the image file as an artifact.")
 
         return {"fake_data": fake_data, "metrics": avg_metrics_fake}
 
@@ -259,7 +252,7 @@ class GaussGan(LightningModule):
     def _compute_metrics(self, batch):
         metrics = {}
         for metric in self.metrics:
-            if metric == "LogLikelihood":
+            if metric == "LogLikelihood" or metric == "KLDivergence":
                 metrics[metric] = ALL_METRICS[metric](
                     centroids=self.gaussians["centroids"],
                     cov_matrices=self.gaussians["covariances"],

@@ -3,6 +3,8 @@ import math
 import pickle
 import warnings
 from functools import partial
+import numpy as np
+from scipy.stats import gaussian_kde
 
 import numpy as np
 import torch
@@ -84,7 +86,64 @@ class LogLikelihood(GaussianMetric):
         return return_value
 
 
+class KLDivergence(GaussianMetric):
+    """Calculates the uniqueness of molecules within a batch."""
+
+    def __init__(self, centroids, cov_matrices, weights, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+
+        # Create GaussianMixture model
+
+        self.gmm = GaussianMixture(n_components=len(centroids), covariance_type="full")
+
+        self.gmm.means_ = np.array(centroids)
+        self.gmm.covariances_ = np.array(cov_matrices)
+        self.gmm.weights_ = weights
+        self.gmm.precisions_cholesky_ = np.linalg.cholesky(
+            np.linalg.inv(self.gmm.covariances_)
+        )
+
+    def compute_score(self, points):
+
+        # Filter out points with NaN values
+        # points = np.array(points)
+        points = points.cpu().numpy()
+        nan_indices = np.isnan(points).any(axis=1)
+
+        points = points[~nan_indices]
+
+        samples_nn = np.array(points)  # Convert list to numpy array if needed
+
+        # Estimate P(x) using KDE
+        # Note: gaussian_kde expects data with shape (d, N)
+        kde = gaussian_kde(samples_nn.T)
+        p_estimates = kde(
+            samples_nn.T
+        )  # Evaluates the estimated density at each sample
+
+        # Evaluate Q(x) using the provided function (ensure it works on numpy arrays)
+        q_values = -self.gmm.score_samples(samples_nn)
+
+        # Filter out problematic values for logarithm
+        valid_indices = (p_estimates > 0) & (q_values > 0)
+
+        if not np.any(valid_indices):
+            warnings.warn(
+                "No valid values for KL divergence calculation after filtering"
+            )
+            return np.array([float("nan")])  # Return NaN but as an array
+
+        p_valid = p_estimates[valid_indices]
+        q_valid = q_values[valid_indices]
+
+        # Compute the KL divergence estimate
+        kl_divergence = np.mean(np.log(p_valid) - np.log(q_valid))
+
+        return kl_divergence
+
+
 ALL_METRICS = {
     "IsPositive": IsPositive,
     "LogLikelihood": LogLikelihood,
+    "KLDivergence": KLDivergence,
 }
