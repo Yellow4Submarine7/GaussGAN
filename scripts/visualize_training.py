@@ -13,7 +13,11 @@ def plot_training(fig, axes, csv_artifacts, run_id, filename):
         # print("Plotting artifact", csv_path)
         data_path = client.download_artifacts(run_id, csv_path)
         df = pd.read_csv(data_path, header=None, sep=",")
-        ax = axes[idx // 4, idx % 4]
+        # Handle 1D vs 2D axes array
+        if axes.ndim == 1:
+            ax = axes[idx % 4]
+        else:
+            ax = axes[idx // 4, idx % 4]
 
         df = (
             df.drop(0).apply(pd.to_numeric).round(3)
@@ -81,7 +85,7 @@ if __name__ == "__main__":
     client = mlflow.tracking.MlflowClient()
     args = utils_scripts.get_parser()
 
-    experiment = client.get_experiment_by_name("GaussGAN-Search")
+    experiment = client.get_experiment_by_name("GaussGAN-Optuna")
     print("Experiment ID:", experiment.experiment_id)
     runs = client.search_runs(
         experiment_ids=[experiment.experiment_id],
@@ -93,7 +97,7 @@ if __name__ == "__main__":
     inps1, inps2, targs1, targs2, inputs, targets = utils_scripts.generate_dataset(
         args.dataset_size, mean1, cov1, mean2, cov2
     )
-    base = 249
+    base = 0
     for i, run in enumerate(runs[base:]):
 
         run_id = run.info.run_id
