@@ -85,7 +85,7 @@ if __name__ == "__main__":
     client = mlflow.tracking.MlflowClient()
     args = utils_scripts.get_parser()
 
-    experiment = client.get_experiment_by_name("GaussGAN-Optuna")
+    experiment = client.get_experiment_by_name(args.experiment_name)
     print("Experiment ID:", experiment.experiment_id)
     runs = client.search_runs(
         experiment_ids=[experiment.experiment_id],

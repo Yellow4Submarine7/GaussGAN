@@ -17,6 +17,12 @@ def get_parser():
         default=10000,
         help="Number of points in the dataset",
     )
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default="GaussGAN-Optuna",
+        help="Name of the experiment",
+    )
     args = parser.parse_args()
     return args
 
