@@ -72,7 +72,7 @@ def objective(trial):
         "--grad_penalty",
         str(grad_penalty),
         "--accelerator",
-        "cpu",
+        "gpu",
     ]
 
     # Run the command and capture the output
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         objective,
         n_trials=args.n_trials,
         callbacks=[print_callback],
-        n_jobs=3,  # Use all available CPU cores (-1), or specify a number like 4
+        n_jobs=3,  # 根据GPU数量调整
     )
 
     print("Best hyperparameters: ", study.best_params)

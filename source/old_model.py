@@ -1,6 +1,5 @@
 import tempfile
 from pathlib import Path
-import time
 
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -21,7 +20,6 @@ class GaussGan(LightningModule):
     def __init__(self, generator, discriminator, predictor, optimizer, **kwargs):
         super().__init__()
         self.automatic_optimization = False  # Disable automatic optimization
-        self.rl_weight = kwargs.get("rl_weight", 1.0)
         self.save_hyperparameters(
             ignore=[
                 "generator",
@@ -38,17 +36,15 @@ class GaussGan(LightningModule):
         self.killer = kwargs.get("killer", False)
         self.validation_samples = kwargs.get("validation_samples", 1000)
         self.n_critic = kwargs.get("n_critic", 5)
-        self.n_predictor = kwargs.get("n_predictor", 2)  # 预测器更新次数，默认2次
         self.grad_penalty = kwargs.get("grad_penalty", 10.0)
         self.gaussians = kwargs.get("gaussians", {})
         self.non_linearity = kwargs.get("non_linearity", False)  # :(
 
     def configure_optimizers(self):
-        g_optim = self.optimizer(self.generator.parameters(), 
-                            betas=(0.5, 0.9))  # 仅设置betas参数
-        d_optim = self.optimizer(self.discriminator.parameters(), 
-                            betas=(0.5, 0.9))
-        p_optim = self.optimizer(self.predictor.parameters()) #default betas=(0.9, 0.999)
+        # pdb.set_trace()
+        g_optim = self.optimizer(self.generator.parameters())
+        d_optim = self.optimizer(self.discriminator.parameters())
+        p_optim = self.optimizer(self.predictor.parameters())
         return [g_optim, d_optim, p_optim], []
 
     def _calculate_gradient_penalty(self, y, x):
@@ -67,29 +63,83 @@ class GaussGan(LightningModule):
         return torch.mean((dydx_l2norm - 1) ** 2)
 
     def training_step(self, batch, batch_idx):
-        # 获取优化器
+        data_gaussians, _ = batch
+
+        if torch.isnan(data_gaussians).all():
+            self.log(
+                "TrainingSkipped",
+                1,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            return
+
+        # Access the optimizers
         g_optim, d_optim, p_optim = self.optimizers()
-        
-        # 训练判别器多次
-        for _ in range(self.n_critic):
-            d_optim.zero_grad()
-            d_loss = self._compute_discriminator_loss(batch)
-            self.manual_backward(d_loss)
-            d_optim.step()
-        
-        # 训练预测器（如果killer模式激活）
-        if self.killer:
-            for _ in range(self.n_predictor):  # 按照指定次数更新预测器
-                p_optim.zero_grad()
-                p_loss, _ = self._compute_predictor_loss(batch)
-                self.manual_backward(p_loss)
-                p_optim.step()
-        
-        # 然后训练生成器一次
-        g_optim.zero_grad()
-        g_loss = self._compute_generator_loss(batch)
-        self.manual_backward(g_loss)
-        g_optim.step()
+        # data, labels = batch
+
+        # train discriminator
+        d_optim.zero_grad()
+        d_loss = self._compute_discriminator_loss(batch)
+        self.manual_backward(d_loss)
+        d_optim.step()
+        self.log(
+            "DiscriminatorLoss",
+            d_loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+            batch_size=batch[0].size(0),
+            sync_dist=True,
+        )
+
+        # train predictor
+        if self.killer == True:
+            p_loss, p_aux = self._compute_predictor_loss(batch)
+            self.manual_backward(p_loss)
+            p_optim.step()
+            p_optim.zero_grad()
+            self.log(
+                "PredictorLoss",
+                p_loss,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+                batch_size=batch[0].size(0),
+                sync_dist=True,
+            )
+            for key, value in p_aux.items():
+                self.log(
+                    key,
+                    value,
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=True,
+                    logger=True,
+                    batch_size=batch[0].size(0),
+                    sync_dist=True,
+                )
+
+        if (batch_idx % self.n_critic) == 0:
+            # train generator
+            g_optim.zero_grad()
+            g_loss = self._compute_generator_loss(batch)
+            self.manual_backward(g_loss)
+            g_optim.step()
+            self.log(
+                "GeneratorLoss",
+                g_loss,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+                batch_size=batch[0].size(0),
+                sync_dist=True,
+            )
 
     def validation_step(self, batch, batch_idx):
         fake_data = self._generate_fake_data(self.validation_samples).detach()
@@ -141,27 +191,12 @@ class GaussGan(LightningModule):
         return {"fake_data": fake_data, "metrics": avg_metrics_fake}
 
     def _generate_fake_data(self, batch_size):
-        # 添加时间测量
-        start_time = time.time()
-        
         # Convert batch_size from tensor to int if needed
         if isinstance(batch_size, torch.Tensor):
             batch_size = batch_size.item()
 
         # Only pass batch_size to the generator
         fake_gaussians = self.generator(batch_size)
-        
-        # 记录时间
-        elapsed = time.time() - start_time
-        # 每10个批次记录一次时间
-        if hasattr(self, 'step_counter'):
-            self.step_counter += 1
-        else:
-            self.step_counter = 0
-        
-        if self.step_counter % 10 == 0:
-            self.log("generator_time", elapsed, on_step=True, on_epoch=True)
-            print(f"Generator forward time: {elapsed:.2f}s for batch size {batch_size}")
 
         # Ensure the output is on the same device as the model
         if fake_gaussians.device != self.device:
@@ -200,29 +235,8 @@ class GaussGan(LightningModule):
         d_fake = self._apply_discriminator(x_fake)
         gan_loss = -d_fake.mean()
 
-        if self.killer:
-            rl_weight = getattr(self, "rl_weight", 1.0)
-            
-            # 分别计算负 x 轴和正 x 轴点的惩罚
-            neg_x_mask = x_fake[:, 0] < 0
-            
-            if torch.any(neg_x_mask):
-                # 对负 x 轴的点施加更大惩罚
-                neg_x_points = x_fake[neg_x_mask]
-                neg_x_penalty = -self._apply_predictor(neg_x_points).mean() * rl_weight * 5.0
-                
-                # 对正 x 轴的点保持正常奖励
-                pos_x_mask = ~neg_x_mask
-                if torch.any(pos_x_mask):
-                    pos_x_points = x_fake[pos_x_mask]
-                    pos_x_reward = -self._apply_predictor(pos_x_points).mean() * rl_weight
-                else:
-                    pos_x_reward = 0.0
-                    
-                rl_loss = neg_x_penalty + pos_x_reward
-            else:
-                # 所有点都在正 x 轴，使用正常奖励
-                rl_loss = -self._apply_predictor(x_fake).mean() * rl_weight
+        if self.killer == True:
+            rl_loss = -self._apply_predictor(x_fake).mean()
         else:
             rl_loss = 0
 
@@ -230,15 +244,9 @@ class GaussGan(LightningModule):
         return g_loss
 
     def _compute_predictor_loss(self, batch):
-        x, _ = batch  # 忽略原始标签
+        x, r = batch
         v = self._apply_predictor(x)
-        
-        # 创建新标签：x > 0 的点为 1，x < 0 的点为 0
-        targets = (x[:, 0] > 0).float().unsqueeze(1)
-        
-        # 使用 BCE 损失（因为输出经过了 sigmoid）
-        #p_loss = nn.HuberLoss()(v, r)
-        p_loss = F.binary_cross_entropy(v, targets)
+        p_loss = nn.HuberLoss()(v, r)
         return p_loss, {"Predictor_loss": p_loss}
 
     def _compute_metrics(self, batch):

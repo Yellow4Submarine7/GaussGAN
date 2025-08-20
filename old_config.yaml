@@ -1,0 +1,33 @@
+#general:
+z_dim: 3
+generator_type: classical_normal
+stage: train
+experiment_name: GaussGAN-manual
+killer: false
+
+#training:
+grad_penalty: 10.0
+n_critic: 4
+checkpoint_path: "checkpoints/"
+agg_method: prod
+max_epochs: 200
+batch_size: 16
+learning_rate: 0.001
+
+nn_gen: "[256,256]" 
+nn_disc: "[32,128]"   
+nn_validator: "[16,16]"   
+non_linearity: "Sigmoid" # ReLU or Sigmoid or Tanh
+
+
+#data:
+dataset_type: "NORMAL"
+
+#metrics:
+metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence']
+
+
+#misc:
+accelerator: cpu
+validation_samples: 500
+seed: 41

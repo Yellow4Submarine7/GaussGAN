@@ -154,4 +154,25 @@ def return_parser():
         help="Non-linear activation function to use in neural networks",
     )
 
+    parser.add_argument(
+        "--quantum_qubits",
+        type=int,
+        help="Number of qubits for quantum circuit",
+    )
+    parser.add_argument(
+        "--quantum_layers",
+        type=int,
+        help="Number of layers for quantum circuit",
+    )
+    parser.add_argument(
+        "--quantum_shots",
+        type=int,
+        help="Number of shots for quantum measurement",
+    )
+    parser.add_argument(
+        "--quantum_basis",
+        type=int,
+        help="Number of basis for quantum shadow",
+    )
+
     return parser

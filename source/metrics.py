@@ -104,40 +104,28 @@ class KLDivergence(GaussianMetric):
         )
 
     def compute_score(self, points):
-
-        # Filter out points with NaN values
-        # points = np.array(points)
         points = points.cpu().numpy()
-        nan_indices = np.isnan(points).any(axis=1)
+        points = points[~np.isnan(points).any(axis=1)]
+        samples_nn = np.array(points)
 
-        points = points[~nan_indices]
-
-        samples_nn = np.array(points)  # Convert list to numpy array if needed
-
-        # Estimate P(x) using KDE
-        # Note: gaussian_kde expects data with shape (d, N)
+        # 估计生成分布P(x)
         kde = gaussian_kde(samples_nn.T)
-        p_estimates = kde(
-            samples_nn.T
-        )  # Evaluates the estimated density at each sample
+        p_estimates = kde(samples_nn.T)
 
-        # Evaluate Q(x) using the provided function (ensure it works on numpy arrays)
-        q_values = -self.gmm.score_samples(samples_nn)
+        # 计算目标分布Q(x)
+        q_values = np.exp(self.gmm.score_samples(samples_nn))   # 修复：移除错误的负号
 
-        # Filter out problematic values for logarithm
+        # 过滤无效值
         valid_indices = (p_estimates > 0) & (q_values > 0)
-
         if not np.any(valid_indices):
-            warnings.warn(
-                "No valid values for KL divergence calculation after filtering"
-            )
-            return np.array([float("nan")])  # Return NaN but as an array
+            warnings.warn("No valid values for KL divergence calculation")
+            return np.array([float("nan")])
 
         p_valid = p_estimates[valid_indices]
         q_valid = q_values[valid_indices]
 
-        # Compute the KL divergence estimate
-        kl_divergence = np.mean(np.log(p_valid) - np.log(q_valid))
+        # 计算KL(Q||P)而不是KL(P||Q)
+        kl_divergence = np.mean(np.log(q_valid) - np.log(p_valid))
 
         return kl_divergence
 

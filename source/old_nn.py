@@ -60,46 +60,32 @@ class QuantumNoise(nn.Module):
 class QuantumShadowNoise(nn.Module):
     @staticmethod
     def build_qnode(num_qubits, num_layers, num_basis):
-        # 定义泡利算符集合, like basic activation funtion
+
         paulis = [qml.PauliZ, qml.PauliX, qml.PauliY, qml.Identity]
-        
-        # 使用张量积构建随机测量基
-        def create_tensor_observable(num_qubits, paulis):
-            obs = random.choice(paulis)(0)
-            for i in range(1, num_qubits):
-                obs = obs @ random.choice(paulis)(i)  # 使用 @ 运算符构建张量积
-            return obs
-        #create real activation funtion 
-        basis = [create_tensor_observable(num_qubits, paulis) for _ in range(num_basis)]
-        
-        # 设置量子计算环境 - 减少shots数量从300到100
-        dev = qml.device("default.qubit", wires=num_qubits, shots=100)
-        
-        # 定义量子电路（其余部分保持不变）
+        basis = [
+            qml.operation.Tensor(*[random.choice(paulis)(i) for i in range(num_qubits)])
+            for _ in range(num_basis)
+        ]
+
+        dev = qml.device("default.qubit", wires=num_qubits, shots=300)
+
         @qml.qnode(dev, interface="torch", diff_method="best")
         def gen_circuit(w):
-            # 生成随机输入, random noise
             z1 = random.uniform(-1, 1)
             z2 = random.uniform(-1, 1)
-            
-            # 初始编码层, like weight initialization
+            # construct generator circuit for both atom vector and node matrix
             for i in range(num_qubits):
                 qml.RY(np.arcsin(z1), wires=i)
                 qml.RZ(np.arcsin(z2), wires=i)
-            
-            # 可训练参数层, like training layer
             for l in range(num_layers):
                 for i in range(num_qubits):
                     qml.RY(w[l][i], wires=i)
-                
                 for i in range(num_qubits - 1):
-                    qml.CNOT(wires=[i, i+1])
-                    qml.RZ(w[l][i+num_qubits], wires=i+1)
-                    qml.CNOT(wires=[i, i+1])
-            
-            # 量子测量, quantum measurement,like obtain results through activation function.
+                    qml.CNOT(wires=[i, i + 1])
+                    qml.RZ(w[l][i + num_qubits], wires=i + 1)
+                    qml.CNOT(wires=[i, i + 1])
             return qml.shadow_expval(basis)
-        
+
         return basis, gen_circuit
 
     def __init__(
@@ -161,64 +147,38 @@ class ClassicalNoise(nn.Module):
 
 
 class MLPGenerator(nn.Module):
-    def __init__(self, non_linearity, hidden_dims, z_dim, output_dim=2, std_scale=1.5, min_std=0.5):
+    def __init__(self, non_linearity, hidden_dims, z_dim, output_dim=2):
         super(MLPGenerator, self).__init__()
         layers = []
-        #layers.append(nn.Sigmoid())
-        non_linearity = getattr(nn, non_linearity, nn.LeakyReLU)
-        
-        self.std_scale = std_scale  # 方差整体缩放因子
-        self.min_std = min_std      # 最小标准差限制
+        non_linearity = getattr(nn, non_linearity)
 
         current_dim = z_dim
         for hdim in hidden_dims:
             layers.append(nn.Linear(current_dim, hdim))
-            layers.append(nn.BatchNorm1d(hdim))
-            layers.append(non_linearity())
+            layers.append(nn.Sigmoid())
             current_dim = hdim
-            
-        # 输出层特殊初始化，使方差部分初始值更大，
-        self.mean_layer = nn.Linear(current_dim, output_dim)
-        self.logvar_layer = nn.Linear(current_dim, output_dim)
-        
-        # 使用更大的初始化范围，让方差更大，control variance
-        nn.init.xavier_uniform_(self.logvar_layer.weight, gain=2.0)
-        nn.init.constant_(self.logvar_layer.bias, 0.5)  # 正偏置使初始方差更大
-        
-        self.feature_extractor = nn.Sequential(*layers)
+        layers.append(nn.Linear(current_dim, output_dim))
+        self.model = nn.Sequential(*layers)
 
     def forward(self, z):
-        features = self.feature_extractor(z)
-        #Set the output layer to a normal distribution format. 
-        # 单独处理均值和方差
-        mean = self.mean_layer(features)
-        log_var = self.logvar_layer(features)
-        
-        # 控制标准差的缩放和最小值
-        std = torch.exp(0.5 * log_var) * self.std_scale
-        std = torch.clamp(std, min=self.min_std)  # 确保标准差不会太小
-        
-        #reparameterization allows gradients to flow through mean and std，
-        # randn_like生成与std形状相同的张量，均值为0，方差为1的标准正态分布
-        eps = torch.randn_like(std) #ε
-        return mean + eps * std #结果=均值+ε*标准差
+        out = self.model(z)
+        return out
 
 
 class MLPDiscriminator(nn.Module):
     def __init__(self, non_linearity, hidden_dims, input_dim=2, output_dim=1):
         super(MLPDiscriminator, self).__init__()
         layers = []
-        #non_linearity = getattr(nn, non_linearity)
-        non_linearity = getattr(nn, non_linearity, nn.LeakyReLU)
+        non_linearity = getattr(nn, non_linearity)
 
         current_dim = input_dim
         for hdim in hidden_dims:
             layers.append(nn.Linear(current_dim, hdim))
-            #layers.append(nn.Sigmoid())
-            layers.append(non_linearity())
+            layers.append(nn.Sigmoid())
             current_dim = hdim
         layers.append(nn.Linear(current_dim, output_dim))
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, z):
+        out = self.model(z)
+        return out
