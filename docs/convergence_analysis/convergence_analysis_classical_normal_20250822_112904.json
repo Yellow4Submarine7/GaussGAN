@@ -1,0 +1,212 @@
+{
+  "generator_type": "classical_normal",
+  "analysis_timestamp": "2025-08-22 11:29:04",
+  "training_duration": 913.2503161430359,
+  "convergence_thresholds": {
+    "ValidationStep_FakeData_KLDivergence": 0.1,
+    "ValidationStep_FakeData_LogLikelihood": -2.0,
+    "ValidationStep_FakeData_IsPositive": 0.8
+  },
+  "configuration": {
+    "plateau_patience": 20,
+    "smoothing_window": 5,
+    "min_epochs": 10
+  },
+  "metrics_history": {
+    "ValidationStep_FakeData_IsPositive": [
+      0.030000001192092896,
+      0.012000000104308128,
+      0.041999999433755875,
+      0.04600000008940697,
+      -0.017999999225139618,
+      -0.06800000369548798,
+      -0.04200000315904617,
+      -0.05400000140070915,
+      0.017999999225139618,
+      0.025999996811151505,
+      0.019999999552965164,
+      0.0019999993965029716
+    ],
+    "ValidationStep_FakeData_LogLikelihood": [
+      -24.905948638916016,
+      -7.867101669311523,
+      -6.036749839782715,
+      -11.946369171142578,
+      -4.4377522468566895,
+      -4.366802215576172,
+      -4.878868103027344,
+      -4.110101699829102,
+      -4.052387237548828,
+      -3.9749698638916016,
+      -4.08513069152832,
+      -3.735344409942627
+    ],
+    "ValidationStep_FakeData_KLDivergence": [
+      -21.521617889404297,
+      -3.551180839538574,
+      -1.8143315315246582,
+      -5.047367095947266,
+      -0.4366241693496704,
+      -0.4374065399169922,
+      -0.8898716568946838,
+      -0.3295707702636719,
+      -0.23048187792301178,
+      -0.1758999526500702,
+      -0.15770354866981506,
+      -0.02313544601202011
+    ],
+    "ValidationStep_FakeData_WassersteinDistance": [
+      4.5567169189453125,
+      1.1733531951904297,
+      0.589054524898529,
+      0.6982765197753906,
+      0.3355352580547333,
+      0.41257786750793457,
+      0.47840914130210876,
+      0.36080700159072876,
+      0.42776739597320557,
+      0.4142484664916992,
+      0.31851452589035034,
+      0.30235758423805237
+    ],
+    "ValidationStep_FakeData_MMDDistance": [
+      0.4681314527988434,
+      0.29021504521369934,
+      0.1520637422800064,
+      0.1165241003036499,
+      0.13539078831672668,
+      0.11524584889411926,
+      0.17460519075393677,
+      0.09956566989421844,
+      0.15299516916275024,
+      0.11473605781793594,
+      0.12721970677375793,
+      0.10396051406860352
+    ],
+    "ValidationStep_FakeData_MMDivergence": [
+      0.8256553411483765,
+      0.3853868246078491,
+      0.1799895316362381,
+      0.11788197606801987,
+      0.10363917052745819,
+      0.13118654489517212,
+      0.13932903110980988,
+      0.0961909070611,
+      0.14434292912483215,
+      0.11611989140510559,
+      0.0869486927986145,
+      0.08501704037189484
+    ]
+  },
+  "epoch_times": [
+    74.15856766700745,
+    82.45849633216858,
+    74.68018054962158,
+    70.2101321220398,
+    80.46012139320374,
+    73.81409907341003,
+    73.65246677398682,
+    78.84995341300964,
+    74.98746299743652,
+    76.60075902938843
+  ],
+  "convergence_analysis": {
+    "summary": {
+      "total_metrics_tracked": 6,
+      "metrics_converged": 0,
+      "metrics_plateaued": 0,
+      "overall_convergence_rate": 0.0
+    },
+    "metrics": {
+      "ValidationStep_FakeData_IsPositive": {
+        "epochs_to_convergence": null,
+        "improvement_rate": -0.004896154137554042,
+        "improvement_percentage": -92.00000459452453,
+        "correlation_coefficient": -0.7524168386664227,
+        "converged": false,
+        "plateau_detected": false,
+        "convergence_pattern": "slow_convergence",
+        "final_value": 0.002399998717010021,
+        "best_value": 0.04600000008940697,
+        "total_epochs": 12
+      },
+      "ValidationStep_FakeData_LogLikelihood": {
+        "epochs_to_convergence": null,
+        "improvement_rate": 1.6001512813679266,
+        "improvement_percentage": 83.97335978477379,
+        "correlation_coefficient": 0.9018462837992803,
+        "converged": false,
+        "plateau_detected": false,
+        "convergence_pattern": "slow_convergence",
+        "final_value": -3.991586780548096,
+        "best_value": -3.735344409942627,
+        "total_epochs": 12
+      },
+      "ValidationStep_FakeData_KLDivergence": {
+        "epochs_to_convergence": null,
+        "improvement_rate": 1.599478359977196,
+        "improvement_percentage": 99.14802725312771,
+        "correlation_coefficient": 0.8800471591347054,
+        "converged": false,
+        "plateau_detected": false,
+        "convergence_pattern": "slow_convergence",
+        "final_value": -0.1833583191037178,
+        "best_value": -0.02313544601202011,
+        "total_epochs": 12
+      },
+      "ValidationStep_FakeData_WassersteinDistance": {
+        "epochs_to_convergence": null,
+        "improvement_rate": -0.3148491651410267,
+        "improvement_percentage": -91.99557485521332,
+        "correlation_coefficient": -0.8642875149507929,
+        "converged": false,
+        "plateau_detected": false,
+        "convergence_pattern": "slow_convergence",
+        "final_value": 0.3647389948368073,
+        "best_value": 4.5567169189453125,
+        "total_epochs": 12
+      },
+      "ValidationStep_FakeData_MMDDistance": {
+        "epochs_to_convergence": null,
+        "improvement_rate": -0.028625185771178806,
+        "improvement_percentage": -74.43123660505536,
+        "correlation_coefficient": -0.8958072215665905,
+        "converged": false,
+        "plateau_detected": false,
+        "convergence_pattern": "slow_convergence",
+        "final_value": 0.11969542354345322,
+        "best_value": 0.4681314527988434,
+        "total_epochs": 12
+      },
+      "ValidationStep_FakeData_MMDivergence": {
+        "epochs_to_convergence": null,
+        "improvement_rate": -0.05812105898873442,
+        "improvement_percentage": -87.19515433579566,
+        "correlation_coefficient": -0.8902349703688449,
+        "converged": false,
+        "plateau_detected": false,
+        "convergence_pattern": "slow_convergence",
+        "final_value": 0.10572389215230941,
+        "best_value": 0.8256553411483765,
+        "total_epochs": 12
+      }
+    },
+    "rankings": {
+      "fastest_convergence": [],
+      "highest_improvement_rate": [
+        "ValidationStep_FakeData_LogLikelihood",
+        "ValidationStep_FakeData_KLDivergence",
+        "ValidationStep_FakeData_WassersteinDistance",
+        "ValidationStep_FakeData_MMDivergence",
+        "ValidationStep_FakeData_MMDDistance",
+        "ValidationStep_FakeData_IsPositive"
+      ]
+    },
+    "training_efficiency": {
+      "total_epochs": 12,
+      "total_training_time": 759.8722393512726,
+      "average_epoch_time": 75.98722393512726,
+      "convergence_efficiency": 0.0
+    }
+  }
+}

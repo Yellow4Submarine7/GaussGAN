@@ -1,0 +1,569 @@
+name: GaussGAN Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run nightly builds at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  PYTHON_VERSION: "3.10"
+  POETRY_VERSION: "1.7.1"
+
+jobs:
+  # Quick unit tests - run on every commit
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      with:
+        version: "latest"
+        
+    - name: Create virtual environment
+      run: uv venv --python ${{ matrix.python-version }}
+      
+    - name: Install dependencies
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Run unit tests
+      run: |
+        uv run pytest docs/tests/unit/ \
+          --cov=source \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-report=term \
+          --junit-xml=test-results-unit.xml \
+          -v \
+          --tb=short
+          
+    - name: Upload unit test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unit-tests
+        name: unit-tests-${{ matrix.python-version }}
+        
+    - name: Archive unit test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: unit-test-results-${{ matrix.python-version }}
+        path: |
+          test-results-unit.xml
+          htmlcov/
+          
+  # Integration tests - more comprehensive
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: unit-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Run integration tests
+      run: |
+        uv run pytest docs/tests/integration/ \
+          --cov=source \
+          --cov-append \
+          --cov-report=xml \
+          --junit-xml=test-results-integration.xml \
+          -v \
+          --tb=short \
+          --maxfail=3
+          
+    - name: Upload integration test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: integration-tests
+        name: integration-tests
+        
+    - name: Archive integration test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: integration-test-results
+        path: test-results-integration.xml
+        
+  # Statistical tests - validate statistical correctness
+  statistical-tests:
+    name: Statistical Validation Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: unit-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Run statistical tests
+      run: |
+        uv run pytest docs/tests/statistical/ \
+          --junit-xml=test-results-statistical.xml \
+          -v \
+          --tb=short \
+          --maxfail=5 \
+          -m "not slow"
+          
+    - name: Archive statistical test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: statistical-test-results
+        path: test-results-statistical.xml
+
+  # Performance benchmarks - track performance over time
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: unit-tests
+    if: github.event_name != 'schedule'  # Skip for nightly builds
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Run performance benchmarks
+      run: |
+        uv run pytest docs/tests/performance/ \
+          --benchmark-json=benchmark-results.json \
+          --junit-xml=test-results-benchmark.xml \
+          -v \
+          --tb=short \
+          -m "performance and not slow" \
+          --maxfail=2
+          
+    - name: Store benchmark results
+      uses: benchmark-action/github-action-benchmark@v1
+      if: success()
+      with:
+        name: GaussGAN Performance Benchmarks
+        tool: 'pytest'
+        output-file-path: benchmark-results.json
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        auto-push: true
+        alert-threshold: '150%'  # Alert if performance degrades by 50%
+        comment-on-alert: true
+        fail-on-alert: true
+        
+    - name: Archive benchmark results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: benchmark-results
+        path: |
+          benchmark-results.json
+          test-results-benchmark.xml
+
+  # Regression tests - prevent performance degradation
+  regression-tests:
+    name: Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: unit-tests
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for regression comparison
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Download baseline performance data
+      uses: actions/download-artifact@v3
+      continue-on-error: true
+      with:
+        name: performance-baselines
+        path: baselines/
+        
+    - name: Run regression tests
+      run: |
+        uv run pytest docs/tests/regression/ \
+          --junit-xml=test-results-regression.xml \
+          -v \
+          --tb=short \
+          --maxfail=3
+          
+    - name: Archive regression test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: regression-test-results
+        path: test-results-regression.xml
+        
+  # GPU tests - run on self-hosted runner with GPU
+  gpu-tests:
+    name: GPU Tests
+    runs-on: self-hosted
+    timeout-minutes: 45
+    needs: unit-tests
+    if: github.event_name != 'schedule' && contains(github.event.pull_request.labels.*.name, 'gpu-tests')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+      
+    - name: Install dependencies with CUDA
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Check GPU availability
+      run: |
+        uv run python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}')"
+        
+    - name: Run GPU-specific tests
+      run: |
+        uv run pytest docs/tests/ \
+          --junit-xml=test-results-gpu.xml \
+          -v \
+          --tb=short \
+          -m "gpu" \
+          --maxfail=5
+          
+    - name: Archive GPU test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: gpu-test-results
+        path: test-results-gpu.xml
+
+  # Quantum tests - separate job for quantum-specific testing
+  quantum-tests:
+    name: Quantum Components Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: unit-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Run quantum tests
+      run: |
+        uv run pytest docs/tests/ \
+          --junit-xml=test-results-quantum.xml \
+          -v \
+          --tb=short \
+          -m "quantum" \
+          --maxfail=5
+          
+    - name: Archive quantum test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: quantum-test-results
+        path: test-results-quantum.xml
+
+  # Nightly comprehensive tests
+  nightly-tests:
+    name: Nightly Comprehensive Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install lightning mlflow optuna pennylane torch-geometric scikit-learn matplotlib seaborn
+        uv pip install pytest pytest-cov pytest-mock pytest-benchmark pytest-xdist
+        uv pip install scipy statsmodels
+        
+    - name: Run comprehensive test suite
+      run: |
+        uv run pytest docs/tests/ \
+          --cov=source \
+          --cov-report=xml \
+          --cov-report=html \
+          --junit-xml=test-results-nightly.xml \
+          -v \
+          --tb=long \
+          --maxfail=10 \
+          --durations=20 \
+          -n auto
+          
+    - name: Generate comprehensive coverage report
+      run: |
+        uv run coverage report --show-missing
+        uv run coverage html
+        
+    - name: Upload comprehensive coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: nightly-comprehensive
+        name: nightly-comprehensive
+        
+    - name: Archive nightly test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: nightly-test-results
+        path: |
+          test-results-nightly.xml
+          htmlcov/
+          
+    - name: Update performance baselines
+      run: |
+        uv run pytest docs/tests/performance/ \
+          --save-baselines \
+          --baseline-dir=baselines/ \
+          -v
+          
+    - name: Upload performance baselines
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-baselines
+        path: baselines/
+
+  # Code quality checks
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install code quality tools
+      run: |
+        pip install black isort flake8 mypy
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        pip install lightning pennylane scikit-learn
+        
+    - name: Run black formatting check
+      run: black --check --diff source/ docs/tests/
+      
+    - name: Run isort import sorting check
+      run: isort --check-only --diff source/ docs/tests/
+      
+    - name: Run flake8 linting
+      run: flake8 source/ docs/tests/ --max-line-length=88 --extend-ignore=E203,W503
+      
+    - name: Run mypy type checking
+      run: mypy source/ --ignore-missing-imports --no-strict-optional
+
+  # Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Bandit security scan
+      uses: securecodewarrior/github-action-bandit@v1
+      with:
+        path: "source/"
+        level: "medium"
+        confidence: "medium"
+        
+    - name: Run Safety dependency scan
+      run: |
+        pip install safety
+        pip freeze | safety check --json --output safety-report.json
+        
+    - name: Archive security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results
+        path: safety-report.json
+
+  # Test result aggregation and reporting
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, statistical-tests, quantum-tests]
+    if: always()
+    
+    steps:
+    - name: Download all test results
+      uses: actions/download-artifact@v3
+      
+    - name: Aggregate test results
+      run: |
+        echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "## Test Status" >> $GITHUB_STEP_SUMMARY
+        echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Statistical Tests: ${{ needs.statistical-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Quantum Tests: ${{ needs.quantum-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Coverage and Quality" >> $GITHUB_STEP_SUMMARY
+        echo "- Code coverage reports uploaded to CodeCov" >> $GITHUB_STEP_SUMMARY
+        echo "- Performance benchmarks tracked for regression" >> $GITHUB_STEP_SUMMARY
+        
+        # Count test files and results
+        find . -name "test-results-*.xml" -exec echo "Found test result: {}" \;
+        
+    - name: Check overall test status
+      run: |
+        if [[ "${{ needs.unit-tests.result }}" == "failure" || 
+              "${{ needs.integration-tests.result }}" == "failure" ]]; then
+          echo "Critical tests failed - marking as failure"
+          exit 1
+        fi
+        
+        if [[ "${{ needs.statistical-tests.result }}" == "failure" || 
+              "${{ needs.quantum-tests.result }}" == "failure" ]]; then
+          echo "Warning: Some specialized tests failed"
+          # Don't fail the overall pipeline for these
+        fi
+        
+        echo "Overall test status: PASS"

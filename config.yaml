@@ -36,8 +36,26 @@ min_std: 0.5      # 最小标准差，防止生成过于集中的点
 #data:
 dataset_type: "NORMAL"
 
-#metrics:
-metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence']
+#metrics: 层次2统计度量配置 - 完整的量子vs古典性能比较指标
+metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence', 'WassersteinDistance', 'MMDDistance', 'MMDivergence']
+
+# 高级指标参数配置
+wasserstein_aggregation: "mean"  # Wasserstein距离聚合方式: mean/max/sum
+mmd_kernel: "rbf"               # MMD核函数类型: rbf
+mmd_gamma: 1.0                  # MMD RBF核带宽参数
+mmd_bandwidths: [0.1, 1.0, 10.0]  # MMD自适应带宽选择
+mmd_target_samples: 1000        # MMD目标样本数量
+
+# 收敛分析配置 (ConvergenceTracker)
+convergence_patience: 10        # 等待改进的epochs数量
+convergence_min_delta: 0.0001   # 认定为改进的最小变化
+convergence_monitor: "KLDivergence"  # 主要监控指标
+convergence_window: 5           # 稳定性分析的窗口大小
+
+# 多运行稳定性分析配置
+stability_analysis: true        # 启用稳定性分析
+stability_runs: 5              # 多次运行次数（不同随机种子）
+stability_metrics: ['KLDivergence', 'WassersteinDistance', 'MMDDistance']  # 稳定性分析指标
 
 
 #misc:

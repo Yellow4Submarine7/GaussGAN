@@ -1,0 +1,51 @@
+# Configuration file for metrics recalculation
+# This file defines which metrics to calculate and their settings
+
+# Available metrics:
+# - IsPositive: Simple position-based metric (x > 0 vs x < 0)
+# - LogLikelihood: GMM-based log likelihood 
+# - KLDivergence: KL(Q||P) divergence using KDE and GMM (EXPENSIVE)
+# - WassersteinDistance: Earth Mover's Distance
+# - MMDDistance: Maximum Mean Discrepancy with RBF kernel
+# - MMDivergenceFromGMM: MMD using GMM-generated target samples
+
+# Metric selection
+# Uncomment and modify to select specific metrics
+# If not specified, all metrics are calculated
+metrics:
+  - "IsPositive"
+  - "LogLikelihood" 
+  - "WassersteinDistance"
+  - "MMDDistance"
+  # - "KLDivergence"  # Expensive, uncomment if needed
+  # - "MMDivergenceFromGMM"
+
+# Performance settings
+fast_mode: true  # Use reduced sample sizes for faster computation
+
+# Advanced settings for individual metrics
+metric_settings:
+  WassersteinDistance:
+    # Number of target samples to use (default: all 20000, fast_mode: 5000)
+    max_target_samples: 5000
+    aggregation: "mean"  # "mean", "max", or "sum"
+    
+  MMDDistance:
+    # Number of target samples to use (default: 5000, fast_mode: 2000)  
+    max_target_samples: 2000
+    gamma: 1.0  # RBF kernel bandwidth
+    
+  MMDivergenceFromGMM:
+    # Number of samples to generate from GMM for comparison
+    n_target_samples: 500  # default: 1000, fast_mode: 500
+    
+  KLDivergence:
+    # This is the most expensive metric - use with caution
+    # No special settings, but inherently slow due to KDE computation
+    enabled: false
+
+# Output settings  
+output:
+  save_individual_results: true
+  generate_summary: true
+  create_plots: false  # TODO: implement plotting functionality

@@ -1,0 +1,72 @@
+# 量子生成器安全配置 - 防止系统崩溃
+# 此配置针对quantum_samples生成器优化，避免内存爆炸
+
+#general:
+z_dim: 4
+generator_type: quantum_samples  # 量子样本生成器
+stage: train
+experiment_name: GaussGAN-quantum-safe
+killer: false  
+
+# 关键修复: 大幅降低量子电路复杂度
+quantum_qubits: 4    # 从6降到4 (减少75%的量子态空间)
+quantum_layers: 2    # 保持2层 (已经很低)
+quantum_basis: 3     # 保持默认
+quantum_shots: 50    # 从100降到50 (减少50%计算时间)
+
+#training:
+grad_penalty: 0.2
+n_critic: 3          # 从5降到3 (减少判别器更新频率)
+n_predictor: 3       # 从5降到3
+checkpoint_path: "checkpoints/"
+agg_method: prod
+max_epochs: 20       # 从50降到20 (先测试稳定性)
+batch_size: 16       # 关键修复: 从256降到16 (减少16倍内存使用！)
+learning_rate: 0.0005  # 降低学习率适应小批量
+
+# 网络架构: 减少复杂度
+nn_gen: "[128,128]"     # 从[256,256]降到[128,128]
+nn_disc: "[128,128]"    # 从[256,256]降到[128,128]
+nn_validator: "[64,64]" # 从[128,128]降到[64,64]
+non_linearity: "LeakyReLU"
+
+# 生成器控制参数
+std_scale: 1.0       # 从1.1降到1.0 (减少方差)
+min_std: 0.3         # 从0.5降到0.3 (更保守)
+
+#data:
+dataset_type: "NORMAL"
+
+#metrics: 减少指标计算负担
+metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence']  # 移除复杂指标
+
+# 移除高级指标配置以减少计算负担
+# wasserstein_aggregation: "mean"
+# mmd_kernel: "rbf"
+# mmd_gamma: 1.0
+# mmd_bandwidths: [0.1, 1.0, 10.0]
+# mmd_target_samples: 1000
+
+# 收敛分析配置
+convergence_patience: 5         # 从10降到5
+convergence_min_delta: 0.001    # 从0.0001升到0.001 (更宽松)
+convergence_monitor: "KLDivergence"
+convergence_window: 3           # 从5降到3
+
+# 禁用稳定性分析以减少计算
+stability_analysis: false       # 从true改为false
+# stability_runs: 5
+# stability_metrics: ['KLDivergence', 'WassersteinDistance', 'MMDDistance']
+
+#misc:
+accelerator: gpu
+validation_samples: 200  # 从500降到200 (减少验证计算)
+seed: 42
+
+# RL权重
+rl_weight: 50           # 从100降到50
+
+# 新增: 内存安全配置
+memory_optimization: true
+gradient_checkpointing: true
+precision: 16           # 使用半精度以节省内存

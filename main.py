@@ -28,11 +28,10 @@ from source.nn import (
     QuantumShadowNoise,
 )
 
-
 from source.utils import return_parser, load_data
+from source.training_integration import setup_convergence_tracking
 import random
 import numpy as np
-
 
 import torch.multiprocessing as mp
 
@@ -54,6 +53,18 @@ def main():
         run_instance = f"{random_number}_" + run_instance
         final_args.update(update_dict)
 
+        # Auto-generate unique experiment name if not provided or using default
+        if ("experiment_name" not in update_dict and 
+            final_args.get("experiment_name") == "GaussGAN-manual") or \
+           ("experiment_name" not in update_dict and 
+            final_args.get("experiment_name") is None):
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            generator_type = final_args.get("generator_type", "unknown")
+            auto_experiment_name = f"GaussGAN_{generator_type}_{timestamp}"
+            final_args["experiment_name"] = auto_experiment_name
+            print(f"🎯 Auto-generated experiment name: {auto_experiment_name}")
+
     set_seed(final_args["seed"])
 
     # pdb.set_trace()
@@ -69,6 +80,17 @@ def main():
     )
 
     datamodule, gaussians = load_data(final_args)
+    
+    # Extract target data for metrics that require reference samples
+    target_data = None
+    if final_args["dataset_type"] == "UNIFORM":
+        with open("data/uniform.pickle", "rb") as f:
+            data = pickle.load(f)
+            target_data = data["inputs"]
+    elif final_args["dataset_type"] == "NORMAL":
+        with open("data/normal.pickle", "rb") as f:
+            data = pickle.load(f)
+            target_data = data["inputs"]
 
     if (
         final_args["generator_type"] == "classical_uniform"
@@ -134,11 +156,21 @@ def main():
         gaussians=gaussians,
         validation_samples=final_args["validation_samples"],
         non_linearity=final_args["non_linearity"],
+        target_data=target_data,
+        generator_type=final_args["generator_type"],
+        experiment_name=final_args["experiment_name"],
+        # Convergence tracking parameters
+        convergence_patience=final_args.get("convergence_patience", 10),
+        convergence_min_delta=final_args.get("convergence_min_delta", 1e-4),
+        convergence_monitor=final_args.get("convergence_monitor", "KLDivergence"),
+        convergence_window=final_args.get("convergence_window", 5),
     )
     model.to(device)
 
     mlflow_logger = MLFlowLogger(
-        experiment_name=final_args["experiment_name"], run_name=run_instance
+        experiment_name=final_args["experiment_name"], 
+        run_name=run_instance,
+        tracking_uri="file:./mlruns"  # 明确指定本地路径
     )
     run_id = mlflow_logger.run_id
 
@@ -155,6 +187,24 @@ def main():
         save_last=True,  # Save the last checkpoint
     )
 
+    # Setup convergence tracking with error handling
+    callbacks_list = [checkpoint_callback]
+    
+    try:
+        convergence_tracker, convergence_callback = setup_convergence_tracking(
+            config_path="config.yaml", 
+            generator_type=final_args["generator_type"]
+        )
+        
+        print(f"Convergence tracking enabled for {final_args['generator_type']}")
+        print(f"Tracking metrics: {list(convergence_tracker.convergence_thresholds.keys())}")
+        
+        callbacks_list.append(convergence_callback)
+        
+    except Exception as e:
+        print(f"⚠️ Warning: Convergence tracking disabled due to error: {e}")
+        print("Training will continue without convergence tracking")
+
     hparams = final_args
     mlflow_logger.log_hyperparams(hparams)
 
@@ -164,7 +214,7 @@ def main():
         logger=mlflow_logger,
         log_every_n_steps=5,
         limit_val_batches=2,
-        callbacks=[checkpoint_callback],
+        callbacks=callbacks_list,
     )
 
     if final_args["stage"] == "train":

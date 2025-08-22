@@ -1,0 +1,48 @@
+#general:
+#z_dim: 3
+z_dim: 4
+generator_type: classical_normal
+stage: train
+experiment_name: GaussGAN-with-MMD
+killer: false  
+
+# 新增量子电路配置参数，too slow in old version
+quantum_qubits: 6  # 减少量子比特数量（从默认的8个）
+quantum_layers: 2  # 减少量子层数（从默认的3层）
+quantum_basis: 3   # 保持默认的基数
+quantum_shots: 100 # 减少量子测量次数
+
+#training:
+#grad_penalty: 2
+grad_penalty: 0.2
+n_critic: 5
+n_predictor: 5  # 预测器(value network)每批次更新次数
+checkpoint_path: "checkpoints/"
+agg_method: prod
+max_epochs: 5  # Reduced for demo
+batch_size: 256
+learning_rate: 0.001
+
+nn_gen: "[256,256]" 
+#nn_disc: "[32,128]"  
+nn_disc: "[256,256]"   
+nn_validator: "[128,128]"   
+non_linearity: "LeakyReLU" # LeakyReLU or ReLU
+
+# 新增生成器控制参数，control variance控制方差
+std_scale: 1.1    # 控制分散程度的缩放因子，值越大分散越多
+min_std: 0.5      # 最小标准差，防止生成过于集中的点
+
+#data:
+dataset_type: "NORMAL"
+
+#metrics: Include the new MMD metric alongside existing ones
+metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence', 'MMDivergenceFromGMM']
+
+#misc:
+accelerator: gpu
+validation_samples: 500
+seed: 41
+
+# 在配置中添加
+rl_weight: 100  # 控制 value network 对生成器的影响程度
