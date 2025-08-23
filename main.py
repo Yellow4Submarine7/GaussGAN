@@ -101,15 +101,16 @@ def main():
         )
     elif final_args["generator_type"] == "quantum_samples":
         G_part_1 = QuantumNoise(
-            num_qubits=final_args["z_dim"],
-            num_layers=2,
+            num_qubits=final_args.get("quantum_qubits", 6),
+            num_layers=final_args.get("quantum_layers", 2),
+            z_dim=final_args["z_dim"],
         )
     elif final_args["generator_type"] == "quantum_shadows":
         G_part_1 = QuantumShadowNoise(
-            z_dim=final_args["z_dim"],
             num_qubits=final_args.get("quantum_qubits", 6),
             num_layers=final_args.get("quantum_layers", 2),
             num_basis=final_args.get("quantum_basis", 3),
+            z_dim=final_args["z_dim"],
         )
     else:
         raise ValueError("Invalid generator type")

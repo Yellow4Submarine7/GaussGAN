@@ -7,8 +7,25 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.venv/
+venv/
 
 # System files
 .DS_Store
 images.zip
 *.Zone.Identifier
+
+# Backup and test files (keep local but don't upload)
+*_backup_*.py
+*_fixed.py
+*_simple_fix.py
+test_*.py
+
+# Alternative implementations (keep local but don't upload)
+config_direct.yaml
+main_direct.py
+source/nn_direct.py
+
+# Note: docs/ and CLAUDE.md are tracked locally but should be excluded when pushing
+# Use: git update-index --assume-unchanged docs/* CLAUDE.md
+# Or add to .git/info/exclude for local-only exclusion

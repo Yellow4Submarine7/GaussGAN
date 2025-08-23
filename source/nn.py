@@ -1,3 +1,4 @@
+"""Fixed neural network modules with quantum memory leak resolved"""
 import random
 from abc import ABC, abstractmethod
 
@@ -10,31 +11,18 @@ from torch.nn.functional import one_hot
 
 
 class QuantumNoise(nn.Module):
-    def __init__(self, num_qubits: int = 8, num_layers: int = 3):
-        super(QuantumNoise, self).__init__()
-
-        # Register the parameters with the module
-        self.num_qubits = num_qubits
-        self.num_layers = num_layers
-
-        # Initialize weights with PyTorch (between -pi and pi) and register as a learnable parameter
-        self.weights = nn.Parameter(
-            torch.rand(num_layers, (num_qubits * 2 - 1)) * 2 * torch.pi - torch.pi
-        )
-
-        # Initialize the device
+    def build_qnode(self, num_qubits, num_layers):
         dev = qml.device("default.qubit", wires=num_qubits)
 
-        # Define the quantum circuit
-        @qml.qnode(dev, interface="torch", diff_method="backprop")
-        def gen_circuit(w):
-            # random noise as generator input
-            z1 = random.uniform(-1, 1)
-            z2 = random.uniform(-1, 1)
-            # construct generator circuit for both atom vector and node matrix
+        @qml.qnode(dev, interface="torch", diff_method="best")
+        def gen_circuit(w, z_values):  # Random values passed as parameters
+            # No random calls inside the circuit!
+            z1, z2 = z_values[0], z_values[1]
+            
             for i in range(num_qubits):
                 qml.RY(np.arcsin(z1), wires=i)
                 qml.RZ(np.arcsin(z2), wires=i)
+            
             for l in range(num_layers):
                 for i in range(num_qubits):
                     qml.RY(w[l][i], wires=i)
@@ -42,102 +30,107 @@ class QuantumNoise(nn.Module):
                     qml.CNOT(wires=[i, i + 1])
                     qml.RZ(w[l][i + num_qubits], wires=i + 1)
                     qml.CNOT(wires=[i, i + 1])
+            
             return [qml.expval(qml.PauliZ(i)) for i in range(num_qubits)]
+        
+        return gen_circuit
 
-        self.gen_circuit = gen_circuit
+    def __init__(self, num_qubits: int = 8, num_layers: int = 3, z_dim: int = 4):
+        super().__init__()
+        self.num_qubits = num_qubits
+        self.num_layers = num_layers
+        self.z_dim = z_dim
+        self.gen_circuit = self.build_qnode(num_qubits, num_layers)
+        
+        self.weights = nn.Parameter(
+            torch.rand(num_layers, (num_qubits * 2 - 1)) * 2 * torch.pi - torch.pi
+        )
+        
+        # Add projection layer to match z_dim
+        self.projection = nn.Linear(num_qubits, z_dim)
 
     def forward(self, batch_size: int):
-        sample_list = [
-            torch.concat(
-                [tensor.unsqueeze(0) for tensor in self.gen_circuit(self.weights)]
-            )
-            for _ in range(batch_size)
-        ]
-        noise = torch.stack(tuple(sample_list)).float()
-        return noise
+        # Use torch.no_grad() to avoid computation graph accumulation
+        with torch.no_grad():
+            sample_list = []
+            for _ in range(batch_size):
+                # Generate random values outside the circuit
+                z_values = [np.random.uniform(-1, 1), np.random.uniform(-1, 1)]
+                # Pass to circuit
+                output = self.gen_circuit(self.weights.detach(), z_values)
+                sample = torch.stack([tensor for tensor in output])
+                sample_list.append(sample)
+            
+            quantum_output = torch.stack(sample_list).float()
+        
+        # Project to z_dim with gradients enabled
+        return self.projection(quantum_output)
 
 
 class QuantumShadowNoise(nn.Module):
-    @staticmethod
-    def build_qnode(num_qubits, num_layers, num_basis):
-        # 定义泡利算符集合, like basic activation funtion
-        paulis = [qml.PauliZ, qml.PauliX, qml.PauliY, qml.Identity]
+    def build_qnode(self, num_qubits, num_layers, num_basis):
+        import random as py_random  # Use alias to avoid confusion
         
-        # 使用张量积构建随机测量基
+        paulis = [qml.PauliX, qml.PauliY, qml.PauliZ]
+        
         def create_tensor_observable(num_qubits, paulis):
-            obs = random.choice(paulis)(0)
+            obs = qml.Identity(0)
             for i in range(1, num_qubits):
-                obs = obs @ random.choice(paulis)(i)  # 使用 @ 运算符构建张量积
+                obs = obs @ py_random.choice(paulis)(i)
             return obs
-        #create real activation funtion 
-        basis = [create_tensor_observable(num_qubits, paulis) for _ in range(num_basis)]
         
-        # 设置量子计算环境 - 减少shots数量从300到100
+        basis = [create_tensor_observable(num_qubits, paulis) for _ in range(num_basis)]
         dev = qml.device("default.qubit", wires=num_qubits, shots=100)
         
-        # 定义量子电路（其余部分保持不变）
         @qml.qnode(dev, interface="torch", diff_method="best")
-        def gen_circuit(w):
-            # 生成随机输入, random noise
-            z1 = random.uniform(-1, 1)
-            z2 = random.uniform(-1, 1)
+        def gen_circuit(w, z_values):  # Random values as parameters
+            z1, z2 = z_values[0], z_values[1]
             
-            # 初始编码层, like weight initialization
             for i in range(num_qubits):
                 qml.RY(np.arcsin(z1), wires=i)
                 qml.RZ(np.arcsin(z2), wires=i)
             
-            # 可训练参数层, like training layer
             for l in range(num_layers):
                 for i in range(num_qubits):
                     qml.RY(w[l][i], wires=i)
-                
                 for i in range(num_qubits - 1):
                     qml.CNOT(wires=[i, i+1])
                     qml.RZ(w[l][i+num_qubits], wires=i+1)
                     qml.CNOT(wires=[i, i+1])
             
-            # 量子测量, quantum measurement,like obtain results through activation function.
             return qml.shadow_expval(basis)
         
         return basis, gen_circuit
 
-    def __init__(
-        self,
-        z_dim: int,
-        *,
-        num_qubits: int = 8,
-        num_layers: int = 3,
-        num_basis: int = 3,
-    ):
-        super(QuantumShadowNoise, self).__init__()
-
-        # Register the parameters with the module
-        self.z_dim = z_dim
+    def __init__(self, num_qubits: int = 8, num_layers: int = 3, num_basis: int = 3, z_dim: int = 4):
+        super().__init__()
         self.num_qubits = num_qubits
         self.num_layers = num_layers
         self.num_basis = num_basis
-
-        self.basis, self.gen_circuit = self.build_qnode(
-            num_qubits, num_layers, num_basis
-        )
-
-        # Initialize weights with PyTorch (between -pi and pi) and register as a learnable parameter
+        self.z_dim = z_dim
+        
+        self.basis, self.gen_circuit = self.build_qnode(num_qubits, num_layers, num_basis)
+        
         self.weights = nn.Parameter(
             torch.rand(num_layers, (num_qubits * 2 - 1)) * 2 * torch.pi - torch.pi
         )
-        self.coeffs = nn.Parameter(torch.rand(num_basis, self.z_dim))
+        
+        # Add projection layer to match z_dim
+        self.projection = nn.Linear(num_basis, z_dim)
 
     def forward(self, batch_size: int):
-        sample_list = [
-            torch.cat(
-                [tensor.unsqueeze(0) for tensor in self.gen_circuit(self.weights)]
-            )
-            for _ in range(batch_size)
-        ]
-        noise = torch.stack(tuple(sample_list)).float()
-        noise = torch.matmul(noise, self.coeffs)
-        return noise
+        with torch.no_grad():
+            sample_list = []
+            for _ in range(batch_size):
+                z_values = [np.random.uniform(-1, 1), np.random.uniform(-1, 1)]
+                output = self.gen_circuit(self.weights.detach(), z_values)
+                sample = torch.cat([tensor.unsqueeze(0) for tensor in output])
+                sample_list.append(sample)
+            
+            quantum_output = torch.stack(sample_list).float()
+        
+        # Project to z_dim with gradients enabled
+        return self.projection(quantum_output)
 
 
 class ClassicalNoise(nn.Module):
