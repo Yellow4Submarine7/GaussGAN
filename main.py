@@ -27,6 +27,7 @@ from source.nn import (
     ClassicalNoise,
     QuantumShadowNoise,
 )
+from source.direct_generators import create_stable_generator
 
 from source.utils import return_parser, load_data
 from source.training_integration import setup_convergence_tracking
@@ -92,36 +93,51 @@ def main():
             data = pickle.load(f)
             target_data = data["inputs"]
 
-    if (
-        final_args["generator_type"] == "classical_uniform"
-        or final_args["generator_type"] == "classical_normal"
-    ):
-        G_part_1 = ClassicalNoise(
-            z_dim=final_args["z_dim"], generator_type=final_args["generator_type"]
-        )
-    elif final_args["generator_type"] == "quantum_samples":
-        G_part_1 = QuantumNoise(
-            num_qubits=final_args.get("quantum_qubits", 6),
-            num_layers=final_args.get("quantum_layers", 2),
+    # Check if using direct generator
+    if final_args["generator_type"].startswith("direct_"):
+        # Extract the specific direct generator type
+        direct_type = final_args["generator_type"].replace("direct_", "")
+        
+        # Create the direct generator (no need for two-part architecture)
+        G = create_stable_generator(
+            generator_type=direct_type,
             z_dim=final_args["z_dim"],
-        )
-    elif final_args["generator_type"] == "quantum_shadows":
-        G_part_1 = QuantumShadowNoise(
-            num_qubits=final_args.get("quantum_qubits", 6),
-            num_layers=final_args.get("quantum_layers", 2),
-            num_basis=final_args.get("quantum_basis", 3),
-            z_dim=final_args["z_dim"],
+            hidden_dims=ast.literal_eval(final_args["nn_gen"]),
+            output_dim=2,
+            output_bound=10.0  # Covers the target distribution range
         )
     else:
-        raise ValueError("Invalid generator type")
-    G_part_2 = MLPGenerator(
-        non_linearity=final_args["non_linearity"],
-        z_dim=final_args["z_dim"],
-        hidden_dims=ast.literal_eval(final_args["nn_gen"]),
-        std_scale=final_args.get("std_scale", 1.5),
-        min_std=final_args.get("min_std", 0.5),
-    )
-    G = torch.nn.Sequential(G_part_1, G_part_2)
+        # Original two-part generator architecture
+        if (
+            final_args["generator_type"] == "classical_uniform"
+            or final_args["generator_type"] == "classical_normal"
+        ):
+            G_part_1 = ClassicalNoise(
+                z_dim=final_args["z_dim"], generator_type=final_args["generator_type"]
+            )
+        elif final_args["generator_type"] == "quantum_samples":
+            G_part_1 = QuantumNoise(
+                num_qubits=final_args.get("quantum_qubits", 6),
+                num_layers=final_args.get("quantum_layers", 2),
+                z_dim=final_args["z_dim"],
+            )
+        elif final_args["generator_type"] == "quantum_shadows":
+            G_part_1 = QuantumShadowNoise(
+                num_qubits=final_args.get("quantum_qubits", 6),
+                num_layers=final_args.get("quantum_layers", 2),
+                num_basis=final_args.get("quantum_basis", 3),
+                z_dim=final_args["z_dim"],
+            )
+        else:
+            raise ValueError("Invalid generator type")
+        G_part_2 = MLPGenerator(
+            non_linearity=final_args["non_linearity"],
+            z_dim=final_args["z_dim"],
+            hidden_dims=ast.literal_eval(final_args["nn_gen"]),
+            std_scale=final_args.get("std_scale", 1.5),
+            min_std=final_args.get("min_std", 0.5),
+        )
+        G = torch.nn.Sequential(G_part_1, G_part_2)
 
     D = MLPDiscriminator(
         non_linearity=final_args["non_linearity"],
@@ -214,7 +230,7 @@ def main():
         accelerator=final_args["accelerator"],
         logger=mlflow_logger,
         log_every_n_steps=5,
-        limit_val_batches=2,
+        limit_val_batches=1,  # Only validate once per epoch
         callbacks=callbacks_list,
     )
 
