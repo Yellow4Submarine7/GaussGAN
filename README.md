@@ -5,11 +5,15 @@ A Wasserstein GAN with quantum circuit generators for 2D distribution generation
 
 ## Features
 
-- **Multiple Generator Types**: Classical (uniform/normal), quantum circuits, quantum shadow noise
+- **Multiple Generator Types**: 
+  - Classical generators with Gaussian parameterization (uniform/normal)
+  - Direct coordinate generators without distributional assumptions (5 architectures)
+  - Quantum circuit generators with PennyLane integration
+  - Quantum shadow noise with exponential measurement efficiency
 - **WGAN-GP Architecture**: Wasserstein GAN with gradient penalty for stable training
-- **Quantum Integration**: PennyLane quantum circuits with PyTorch autodiff
+- **Distribution-Agnostic Generation**: New direct generators that output coordinates without mean+std assumptions
 - **Value Network "Killer"**: Reinforcement learning to shape distributions
-- **Comprehensive Metrics**: Log-likelihood, KL divergence, Wasserstein distance, MMD
+- **Comprehensive Metrics**: Log-likelihood, KL divergence, Wasserstein distance, MMD, convergence tracking
 - **Hyperparameter Optimization**: Automated tuning with Optuna
 
 ## Table of Contents
@@ -64,14 +68,20 @@ A Wasserstein GAN with quantum circuit generators for 2D distribution generation
 ## Quick Start
 
 ```bash
-# Train with classical generator
+# Train with classical generator (Gaussian parameterization)
 python main.py --generator_type classical_normal --max_epochs 50
+
+# Train with direct coordinate generator (no distributional assumptions)
+python main.py --generator_type direct_stable --max_epochs 50
 
 # Train with quantum circuit generator
 python main.py --generator_type quantum_samples --max_epochs 50
 
 # Train with quantum shadows
 python main.py --generator_type quantum_shadows --max_epochs 50
+
+# Test direct generator implementations
+python test_direct_generator.py
 ```
 
 ## Command-Line Arguments
@@ -80,10 +90,18 @@ The main script accepts several command-line arguments:
 
 ### Generator Configuration
 - **`--generator_type`**: Type of generator to use:
-  - `classical_uniform`: Uniform distribution generator
-  - `classical_normal`: Normal distribution generator (default)
-  - `quantum_samples`: Quantum circuit generator with parameterized gates
-  - `quantum_shadows`: Quantum shadows with exponential measurement efficiency
+  - **Classical (with Gaussian parameterization)**:
+    - `classical_uniform`: Uniform distribution generator
+    - `classical_normal`: Normal distribution generator (default)
+  - **Direct Coordinate Generators (no distributional assumptions)**:
+    - `direct_bounded`: Simple bounded output generator
+    - `direct_residual`: Generator with residual connections
+    - `direct_progressive`: Progressive complexity generator
+    - `direct_stable`: Combined stability techniques (recommended)
+    - `direct_gradient`: Gradient-controlled generator
+  - **Quantum Generators**:
+    - `quantum_samples`: Quantum circuit generator with parameterized gates
+    - `quantum_shadows`: Quantum shadows with exponential measurement efficiency
 - **`--z_dim`**: Dimension of the latent space (default: 4)
 
 ### Training Parameters
@@ -105,10 +123,23 @@ The main script accepts several command-line arguments:
 
 ## Training the Model
 
-### Using Classical Generator
+### Using Classical Generator (Gaussian Parameterization)
 
 ```bash
 python main.py --generator_type classical_normal --max_epochs 50
+```
+
+### Using Direct Coordinate Generator (Distribution-Agnostic)
+
+```bash
+# Recommended: stable direct generator with multiple stability techniques
+python main.py --generator_type direct_stable --max_epochs 50
+
+# Alternative architectures
+python main.py --generator_type direct_bounded --max_epochs 50    # Simple bounded
+python main.py --generator_type direct_residual --max_epochs 50   # With residual connections
+python main.py --generator_type direct_progressive --max_epochs 50 # Progressive complexity
+python main.py --generator_type direct_gradient --max_epochs 50   # Gradient controlled
 ```
 
 ### Using Quantum Generator
@@ -127,6 +158,7 @@ python main.py --generator_type quantum_shadows --max_epochs 50
 
 ```bash
 python main.py --generator_type classical_normal --killer true --max_epochs 50
+python main.py --generator_type direct_stable --killer true --max_epochs 50
 ```
 
 ## Examples
@@ -140,6 +172,19 @@ python main.py \
     --max_epochs 50 \
     --batch_size 256 \
     --learning_rate 0.001
+```
+
+### Comparing Direct vs Parameterized Generators
+
+```bash
+# Traditional approach with Gaussian parameterization
+python main.py --generator_type classical_normal --max_epochs 50
+
+# Direct approach without distributional assumptions
+python main.py --generator_type direct_stable --max_epochs 50
+
+# Test both approaches
+python test_direct_generator.py
 ```
 
 ### Quantum Circuit with Custom Parameters
@@ -163,20 +208,23 @@ python GaussGAN-tuna.py
 
 ```
 GaussGAN/
-├── main.py                 # Main training script
-├── config.yaml            # Configuration file
-├── requirements.txt       # Python dependencies
+├── main.py                     # Main training script
+├── config.yaml                # Configuration file
+├── requirements.txt           # Python dependencies
+├── test_direct_generator.py   # Test script for direct generators
 ├── source/
-│   ├── model.py          # WGAN-GP model implementation
-│   ├── nn.py             # Generator and discriminator networks
-│   ├── data.py           # Data loading and processing
-│   └── metrics.py        # Evaluation metrics
+│   ├── model.py              # WGAN-GP model implementation
+│   ├── nn.py                 # Classical and quantum generators
+│   ├── direct_generators.py  # Direct coordinate generators (no Gaussian assumption)
+│   ├── data.py               # Data loading and processing
+│   ├── metrics.py            # Evaluation metrics
+│   └── convergence.py        # Convergence tracking and analysis
 ├── scripts/
-│   ├── visualize_training.py  # Training visualization
-│   └── visualize_latest.py    # Latest results visualization
+│   ├── visualize_training.py # Training visualization
+│   └── visualize_latest.py   # Latest results visualization
 └── data/
-    ├── normal.pickle     # Gaussian mixture target
-    └── uniform.pickle    # Uniform distribution target
+    ├── normal.pickle         # Gaussian mixture target
+    └── uniform.pickle        # Uniform distribution target
 ```
 
 ## Additional Notes
@@ -212,14 +260,18 @@ python scripts/visualize_data.py
 - Tensor Core optimization with `torch.set_float32_matmul_precision('medium')`
 - Reduced quantum parameters for faster training (6 qubits, 2 layers, 100 shots)
 - WGAN-GP for stable training without mode collapse
+- Validation frequency set to once per epoch for consistent visualization
+- Direct generators use multiple stability techniques (bounded outputs, residual connections, spectral normalization)
 
 ## Research Context
 
 This project explores:
-- Quantum circuit expressivity in generative modeling
-- Shadow tomography for efficient quantum measurements
-- Integration of quantum and classical components in hybrid models
-- Comparison of quantum vs classical generators for 2D distributions
+- **Distribution-agnostic generation**: Direct coordinate generators without Gaussian assumptions
+- **Quantum circuit expressivity**: Quantum generators for non-classical distributions
+- **Shadow tomography**: Efficient quantum measurements with exponential advantages
+- **Hybrid architectures**: Integration of quantum and classical components
+- **Comparative analysis**: Classical (parameterized vs direct) and quantum generators
+- **Training stability**: Multiple architectural techniques for stable GAN training
 
 ## License
 
