@@ -118,7 +118,7 @@ if __name__ == "__main__":
         objective,
         n_trials=args.n_trials,
         callbacks=[print_callback],
-        n_jobs=3,  # 根据GPU数量调整
+        n_jobs=3,
     )
 
     print("Best hyperparameters: ", study.best_params)

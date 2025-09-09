@@ -39,7 +39,7 @@ class GaussGan(LightningModule):
         self.killer = kwargs.get("killer", False)
         self.validation_samples = kwargs.get("validation_samples", 1000)
         self.n_critic = kwargs.get("n_critic", 5)
-        self.n_predictor = kwargs.get("n_predictor", 2)  # 预测器更新次数，默认2次
+        self.n_predictor = kwargs.get("n_predictor", 2)
         self.grad_penalty = kwargs.get("grad_penalty", 10.0)
         self.gaussians = kwargs.get("gaussians", {})
         self.non_linearity = kwargs.get("non_linearity", False)  # :(
@@ -64,7 +64,7 @@ class GaussGan(LightningModule):
 
     def configure_optimizers(self):
         g_optim = self.optimizer(self.generator.parameters(), 
-                            betas=(0.5, 0.9))  # 仅设置betas参数
+                            betas=(0.5, 0.9))
         d_optim = self.optimizer(self.discriminator.parameters(), 
                             betas=(0.5, 0.9))
         p_optim = self.optimizer(self.predictor.parameters()) #default betas=(0.9, 0.999)
@@ -86,10 +86,7 @@ class GaussGan(LightningModule):
         return torch.mean((dydx_l2norm - 1) ** 2)
 
     def training_step(self, batch, batch_idx):
-        # 获取优化器
         g_optim, d_optim, p_optim = self.optimizers()
-        
-        # 训练判别器多次
         d_loss_total = 0.0
         for _ in range(self.n_critic):
             d_optim.zero_grad()
@@ -98,16 +95,12 @@ class GaussGan(LightningModule):
             d_optim.step()
             d_loss_total += d_loss.item()
         d_loss_avg = d_loss_total / self.n_critic
-        
-        # 训练预测器（如果killer模式激活）
         if self.killer:
-            for _ in range(self.n_predictor):  # 按照指定次数更新预测器
+            for _ in range(self.n_predictor):
                 p_optim.zero_grad()
                 p_loss, _ = self._compute_predictor_loss(batch)
                 self.manual_backward(p_loss)
                 p_optim.step()
-        
-        # 然后训练生成器一次
         g_optim.zero_grad()
         g_loss = self._compute_generator_loss(batch)
         self.manual_backward(g_loss)

@@ -38,7 +38,7 @@ import torch.multiprocessing as mp
 
 from source.utils import set_seed
 
-torch.set_float32_matmul_precision('medium')  # 启用Tensor Core优化
+torch.set_float32_matmul_precision('medium')
 
 def main():
 
@@ -187,7 +187,7 @@ def main():
     mlflow_logger = MLFlowLogger(
         experiment_name=final_args["experiment_name"], 
         run_name=run_instance,
-        tracking_uri="file:./mlruns"  # 明确指定本地路径
+        tracking_uri="file:./mlruns"
     )
     run_id = mlflow_logger.run_id
 

@@ -107,14 +107,11 @@ class KLDivergence(GaussianMetric):
         points = points[~np.isnan(points).any(axis=1)]
         samples_nn = np.array(points)
 
-        # 估计生成分布P(x)
         kde = gaussian_kde(samples_nn.T)
         p_estimates = kde(samples_nn.T)
 
-        # 计算目标分布Q(x)
-        q_values = np.exp(self.gmm.score_samples(samples_nn))   # 修复：移除错误的负号
+        q_values = np.exp(self.gmm.score_samples(samples_nn))
 
-        # 过滤无效值
         valid_indices = (p_estimates > 0) & (q_values > 0)
         if not np.any(valid_indices):
             warnings.warn("No valid values for KL divergence calculation")
@@ -123,7 +120,6 @@ class KLDivergence(GaussianMetric):
         p_valid = p_estimates[valid_indices]
         q_valid = q_values[valid_indices]
 
-        # 计算KL(Q||P)而不是KL(P||Q)
         kl_divergence = np.mean(np.log(q_valid) - np.log(p_valid))
 
         return kl_divergence

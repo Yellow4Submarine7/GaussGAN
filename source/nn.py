@@ -160,8 +160,8 @@ class MLPGenerator(nn.Module):
         #layers.append(nn.Sigmoid())
         non_linearity = getattr(nn, non_linearity, nn.LeakyReLU)
         
-        self.std_scale = std_scale  # 方差整体缩放因子
-        self.min_std = min_std      # 最小标准差限制
+        self.std_scale = std_scale
+        self.min_std = min_std
 
         current_dim = z_dim
         for hdim in hidden_dims:
@@ -169,32 +169,24 @@ class MLPGenerator(nn.Module):
             layers.append(nn.BatchNorm1d(hdim))
             layers.append(non_linearity())
             current_dim = hdim
-            
-        # 输出层特殊初始化，使方差部分初始值更大，
         self.mean_layer = nn.Linear(current_dim, output_dim)
         self.logvar_layer = nn.Linear(current_dim, output_dim)
-        
-        # 使用更大的初始化范围，让方差更大，control variance
         nn.init.xavier_uniform_(self.logvar_layer.weight, gain=2.0)
-        nn.init.constant_(self.logvar_layer.bias, 0.5)  # 正偏置使初始方差更大
+        nn.init.constant_(self.logvar_layer.bias, 0.5)
         
         self.feature_extractor = nn.Sequential(*layers)
 
     def forward(self, z):
         features = self.feature_extractor(z)
-        #Set the output layer to a normal distribution format. 
-        # 单独处理均值和方差
+        #Set the output layer to a normal distribution format.
         mean = self.mean_layer(features)
         log_var = self.logvar_layer(features)
-        
-        # 控制标准差的缩放和最小值
         std = torch.exp(0.5 * log_var) * self.std_scale
-        std = torch.clamp(std, min=self.min_std)  # 确保标准差不会太小
+        std = torch.clamp(std, min=self.min_std)
         
-        #reparameterization allows gradients to flow through mean and std，
-        # randn_like生成与std形状相同的张量，均值为0，方差为1的标准正态分布
-        eps = torch.randn_like(std) #ε
-        return mean + eps * std #结果=均值+ε*标准差
+        #reparameterization allows gradients to flow through mean and std
+        eps = torch.randn_like(std)
+        return mean + eps * std
 
 
 class MLPDiscriminator(nn.Module):

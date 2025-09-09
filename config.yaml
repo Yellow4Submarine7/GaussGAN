@@ -6,17 +6,16 @@ stage: train
 experiment_name: GaussGAN-manual
 killer: false  
 
-# 新增量子电路配置参数，too slow in old version
-quantum_qubits: 6  # 减少量子比特数量（从默认的8个）
-quantum_layers: 2  # 减少量子层数（从默认的3层）
-quantum_basis: 3   # 保持默认的基数
-quantum_shots: 100 # 减少量子测量次数
+quantum_qubits: 6
+quantum_layers: 2
+quantum_basis: 3
+quantum_shots: 100
 
 #training:
 #grad_penalty: 2
 grad_penalty: 0.2
 n_critic: 5
-n_predictor: 5  # 预测器(value network)每批次更新次数
+n_predictor: 5
 checkpoint_path: "checkpoints/"
 agg_method: prod
 max_epochs: 50
@@ -29,33 +28,29 @@ nn_disc: "[256,256]"
 nn_validator: "[128,128]"   
 non_linearity: "LeakyReLU" # LeakyReLU or ReLU
 
-# 新增生成器控制参数，control variance控制方差
-std_scale: 1.1    # 控制分散程度的缩放因子，值越大分散越多
-min_std: 0.5      # 最小标准差，防止生成过于集中的点
+std_scale: 1.1
+min_std: 0.5
 
 #data:
 dataset_type: "NORMAL"
 
-#metrics: 层次2统计度量配置 - 完整的量子vs古典性能比较指标
+#metrics:
 metrics: ['IsPositive', 'LogLikelihood', 'KLDivergence', 'WassersteinDistance', 'MMDDistance', 'MMDivergence']
 
-# 高级指标参数配置
-wasserstein_aggregation: "mean"  # Wasserstein距离聚合方式: mean/max/sum
-mmd_kernel: "rbf"               # MMD核函数类型: rbf
-mmd_gamma: 1.0                  # MMD RBF核带宽参数
-mmd_bandwidths: [0.1, 1.0, 10.0]  # MMD自适应带宽选择
-mmd_target_samples: 1000        # MMD目标样本数量
+wasserstein_aggregation: "mean"
+mmd_kernel: "rbf"
+mmd_gamma: 1.0
+mmd_bandwidths: [0.1, 1.0, 10.0]
+mmd_target_samples: 1000
 
-# 收敛分析配置 (ConvergenceTracker)
-convergence_patience: 10        # 等待改进的epochs数量
-convergence_min_delta: 0.0001   # 认定为改进的最小变化
-convergence_monitor: "KLDivergence"  # 主要监控指标
-convergence_window: 5           # 稳定性分析的窗口大小
+convergence_patience: 10
+convergence_min_delta: 0.0001
+convergence_monitor: "KLDivergence"
+convergence_window: 5
 
-# 多运行稳定性分析配置
-stability_analysis: true        # 启用稳定性分析
-stability_runs: 5              # 多次运行次数（不同随机种子）
-stability_metrics: ['KLDivergence', 'WassersteinDistance', 'MMDDistance']  # 稳定性分析指标
+stability_analysis: true
+stability_runs: 5
+stability_metrics: ['KLDivergence', 'WassersteinDistance', 'MMDDistance']
 
 
 #misc:
@@ -63,5 +58,4 @@ accelerator: gpu
 validation_samples: 500
 seed: 41
 
-# 在配置中添加
-rl_weight: 100  # 控制 value network 对生成器的影响程度
+rl_weight: 100

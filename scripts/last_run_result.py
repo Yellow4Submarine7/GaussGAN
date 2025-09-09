@@ -1,6 +1,5 @@
 import mlflow
 
-# 获取最近的运行结果
 client = mlflow.tracking.MlflowClient()
 experiment = client.get_experiment_by_name("GaussGAN-manual")
 runs = client.search_runs(
@@ -8,7 +7,6 @@ runs = client.search_runs(
     order_by=["attribute.start_time desc"]
 )
 
-# 打印最后一次运行的指标
 last_run = runs[0]
 print("Metrics for run", last_run.info.run_id)
 for metric_name, metric_value in last_run.data.metrics.items():
