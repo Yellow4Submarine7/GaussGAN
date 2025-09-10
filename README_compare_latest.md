@@ -1,35 +1,35 @@
-# 🔄 自动化运行对比工具
+# 🔄 Automated Run Comparison Tool
 
-## 快速开始
+## Quick Start
 
 ```bash
 uv run python compare_latest.py
 ```
 
-一行命令完成所有操作！
+One command to complete all operations!
 
-## 功能
+## Features
 
-✅ **自动发现最新运行**
-- 量子运行：`quantum_samples`, `quantum_shadows`  
-- 经典运行：`classical_normal`, `classical_uniform`
+✅ **Automatic Discovery of Latest Runs**
+- Quantum runs: `quantum_samples`, `quantum_shadows`  
+- Classical runs: `classical_normal`, `classical_uniform`
 
-✅ **完整指标计算**
-- KL散度 (KL Divergence)
-- Wasserstein距离
-- 最大均值散度 (MMD)
-- 对数似然 (Log Likelihood)
+✅ **Complete Metrics Calculation**
+- KL Divergence
+- Wasserstein Distance
+- Maximum Mean Discrepancy (MMD)
+- Log Likelihood
 
-✅ **6子图可视化**
-- 训练指标对比
-- 损失函数曲线
-- 专业图表布局
+✅ **6-Subplot Visualization**
+- Training metrics comparison
+- Loss function curves
+- Professional chart layout
 
-✅ **数据导出**
-- PNG高分辨率图表
-- CSV详细数据文件
+✅ **Data Export**
+- High-resolution PNG charts
+- Detailed CSV data files
 
-## 输出示例
+## Output Example
 
 ```
 🔍 GaussGAN Latest Runs Comparison
@@ -40,11 +40,11 @@ uv run python compare_latest.py
 📄 Detailed data saved as: latest_comparison_data_20250822_235724.csv
 ```
 
-## 核心特性
+## Core Features
 
-- **零配置**：无需指定运行ID或参数
-- **智能处理**：自动处理不同epoch数量
-- **完全兼容**：使用项目自带的metrics.py
-- **容错设计**：优雅处理异常情况
+- **Zero Configuration**: No need to specify run IDs or parameters
+- **Intelligent Processing**: Automatically handles different epoch counts
+- **Fully Compatible**: Uses the project's built-in metrics.py
+- **Fault-Tolerant Design**: Gracefully handles exceptions
 
-就这么简单！🚀
+It's that simple! 🚀

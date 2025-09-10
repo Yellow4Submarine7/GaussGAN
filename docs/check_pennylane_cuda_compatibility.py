@@ -1,6 +1,6 @@
 """
-PennyLane与CUDA兼容性检查脚本
-检查量子模拟库与GPU环境的兼容性问题
+PennyLane and CUDA Compatibility Check Script
+Check compatibility issues between quantum simulation library and GPU environment
 """
 
 import torch
@@ -11,55 +11,55 @@ import gc
 import traceback
 
 def check_torch_cuda():
-    """检查PyTorch CUDA环境"""
+    """Check PyTorch CUDA environment"""
     print("=" * 50)
-    print("PyTorch CUDA 环境检查")
+    print("PyTorch CUDA Environment Check")
     print("=" * 50)
     
-    print(f"PyTorch版本: {torch.__version__}")
-    print(f"CUDA可用: {torch.cuda.is_available()}")
+    print(f"PyTorch version: {torch.__version__}")
+    print(f"CUDA available: {torch.cuda.is_available()}")
     
     if torch.cuda.is_available():
-        print(f"CUDA版本: {torch.version.cuda}")
-        print(f"GPU数量: {torch.cuda.device_count()}")
-        print(f"当前GPU: {torch.cuda.current_device()}")
-        print(f"GPU名称: {torch.cuda.get_device_name()}")
+        print(f"CUDA version: {torch.version.cuda}")
+        print(f"GPU count: {torch.cuda.device_count()}")
+        print(f"Current GPU: {torch.cuda.current_device()}")
+        print(f"GPU name: {torch.cuda.get_device_name()}")
         
-        # 内存信息
+        # Memory information
         total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
         allocated = torch.cuda.memory_allocated() / 1024**3
         cached = torch.cuda.memory_reserved() / 1024**3
         
-        print(f"GPU总内存: {total_memory:.2f} GB")
-        print(f"已分配内存: {allocated:.2f} GB")
-        print(f"缓存内存: {cached:.2f} GB")
-        print(f"可用内存: {total_memory - allocated - cached:.2f} GB")
+        print(f"GPU total memory: {total_memory:.2f} GB")
+        print(f"Allocated memory: {allocated:.2f} GB")
+        print(f"Cached memory: {cached:.2f} GB")
+        print(f"Available memory: {total_memory - allocated - cached:.2f} GB")
 
 def check_pennylane_info():
-    """检查PennyLane信息"""
+    """Check PennyLane information"""
     print("\n" + "=" * 50)
-    print("PennyLane 环境检查")
+    print("PennyLane Environment Check")
     print("=" * 50)
     
-    print(f"PennyLane版本: {qml.__version__}")
+    print(f"PennyLane version: {qml.__version__}")
     
-    # 检查可用设备
-    print("\n可用的量子设备:")
+    # Check available devices
+    print("\nAvailable quantum devices:")
     try:
         available_devices = qml.device._get_device_entrypoints()
         for device_name in available_devices:
             print(f"  - {device_name}")
     except Exception as e:
-        print(f"  无法获取设备列表: {e}")
+        print(f"  Unable to get device list: {e}")
 
 def test_basic_quantum_circuit():
-    """测试基本量子电路"""
+    """Test basic quantum circuit"""
     print("\n" + "=" * 50)
-    print("基本量子电路测试")
+    print("Basic Quantum Circuit Test")
     print("=" * 50)
     
     try:
-        # 创建小型量子设备
+        # Create small quantum device
         dev = qml.device("default.qubit", wires=2)
         
         @qml.qnode(dev, interface="torch")
@@ -68,33 +68,33 @@ def test_basic_quantum_circuit():
             qml.CNOT(wires=[0, 1])
             return qml.expval(qml.PauliZ(0))
         
-        # 测试单个调用
+        # Test single call
         x = torch.tensor(0.5, requires_grad=True)
         result = simple_circuit(x)
-        print(f"单次电路调用成功: {result}")
+        print(f"Single circuit call successful: {result}")
         
-        # 测试梯度计算
+        # Test gradient calculation
         loss = result ** 2
         loss.backward()
-        print(f"梯度计算成功: {x.grad}")
+        print(f"Gradient calculation successful: {x.grad}")
         
     except Exception as e:
-        print(f"基本量子电路测试失败: {e}")
+        print(f"Basic quantum circuit test failed: {e}")
         traceback.print_exc()
 
 def test_batch_quantum_processing():
-    """测试批处理量子计算"""
+    """Test batch quantum processing"""
     print("\n" + "=" * 50)
-    print("批处理量子计算测试")
+    print("Batch Quantum Processing Test")
     print("=" * 50)
     
     batch_sizes = [1, 4, 8, 16, 32]
     
     for batch_size in batch_sizes:
-        print(f"\n测试批大小: {batch_size}")
+        print(f"\nTesting batch size: {batch_size}")
         
         try:
-            # 创建量子设备
+            # Create quantum device
             dev = qml.device("default.qubit", wires=3)
             
             @qml.qnode(dev, interface="torch", diff_method="backprop")
@@ -105,13 +105,13 @@ def test_batch_quantum_processing():
                 qml.RZ(params[2], wires=1)
                 return [qml.expval(qml.PauliZ(i)) for i in range(3)]
             
-            # 准备参数
+            # Prepare parameters
             params = torch.rand(3, requires_grad=True)
             
-            # 模拟批处理（类似QuantumNoise的做法）
+            # Simulate batch processing (similar to QuantumNoise approach)
             results = []
             for i in range(batch_size):
-                # 添加少量随机性
+                # Add small amount of randomness
                 noise = torch.randn(3) * 0.1
                 circuit_params = params + noise
                 
@@ -119,48 +119,48 @@ def test_batch_quantum_processing():
                 result = torch.stack([tensor for tensor in circuit_output])
                 results.append(result)
                 
-                # 检查内存使用
+                # Check memory usage
                 if torch.cuda.is_available() and i % 8 == 7:
                     allocated = torch.cuda.memory_allocated() / 1024**2
-                    print(f"  步骤 {i+1}/{batch_size}: GPU内存 {allocated:.1f} MB")
+                    print(f"  Step {i+1}/{batch_size}: GPU memory {allocated:.1f} MB")
             
-            # 最终堆叠
+            # Final stacking
             batch_output = torch.stack(results)
-            print(f"  批处理成功! 输出形状: {batch_output.shape}")
+            print(f"  Batch processing successful! Output shape: {batch_output.shape}")
             
-            # 清理内存
+            # Clean up memory
             del results, batch_output
             torch.cuda.empty_cache() if torch.cuda.is_available() else None
             gc.collect()
             
         except Exception as e:
-            print(f"  批大小 {batch_size} 失败: {e}")
-            # 尝试恢复
+            print(f"  Batch size {batch_size} failed: {e}")
+            # Try to recover
             torch.cuda.empty_cache() if torch.cuda.is_available() else None
             gc.collect()
 
 def test_memory_stress():
-    """内存压力测试"""
+    """Memory stress test"""
     print("\n" + "=" * 50)
-    print("内存压力测试")
+    print("Memory Stress Test")
     print("=" * 50)
     
     if not torch.cuda.is_available():
-        print("跳过GPU内存压力测试（无CUDA支持）")
+        print("Skipping GPU memory stress test (no CUDA support)")
         return
     
     try:
-        # 记录初始内存
+        # Record initial memory
         torch.cuda.empty_cache()
         initial_memory = torch.cuda.memory_allocated() / 1024**2
-        print(f"初始GPU内存: {initial_memory:.1f} MB")
+        print(f"Initial GPU memory: {initial_memory:.1f} MB")
         
-        # 创建大量量子设备（模拟原问题）
+        # Create many quantum devices (simulate original problem)
         devices = []
         circuits = []
         
-        for i in range(10):  # 创建10个设备
-            dev = qml.device("default.qubit", wires=6)  # 使用原配置
+        for i in range(10):  # Create 10 devices
+            dev = qml.device("default.qubit", wires=6)  # Use original configuration
             devices.append(dev)
             
             @qml.qnode(dev, interface="torch", diff_method="backprop")
@@ -174,29 +174,29 @@ def test_memory_stress():
             circuits.append(circuit)
             
             current_memory = torch.cuda.memory_allocated() / 1024**2
-            print(f"设备 {i+1}: GPU内存 {current_memory:.1f} MB (+{current_memory-initial_memory:.1f})")
+            print(f"Device {i+1}: GPU memory {current_memory:.1f} MB (+{current_memory-initial_memory:.1f})")
             
-            if current_memory > 1000:  # 如果超过1GB就停止
-                print("内存使用过高，停止测试")
+            if current_memory > 1000:  # Stop if exceeds 1GB
+                print("Memory usage too high, stopping test")
                 break
         
-        print(f"创建了 {len(devices)} 个量子设备")
+        print(f"Created {len(devices)} quantum devices")
         
     except Exception as e:
-        print(f"内存压力测试失败: {e}")
+        print(f"Memory stress test failed: {e}")
     finally:
-        # 清理
+        # Clean up
         torch.cuda.empty_cache()
         gc.collect()
 
 def check_pennylane_lightning():
-    """检查PennyLane Lightning加速器"""
+    """Check PennyLane Lightning accelerator"""
     print("\n" + "=" * 50)
-    print("PennyLane Lightning 检查")
+    print("PennyLane Lightning Check")
     print("=" * 50)
     
     try:
-        # 尝试使用Lightning设备
+        # Try to use Lightning device
         dev_lightning = qml.device("lightning.qubit", wires=4)
         
         @qml.qnode(dev_lightning, interface="torch")
@@ -207,15 +207,15 @@ def check_pennylane_lightning():
         
         x = torch.tensor(0.3)
         result = lightning_circuit(x)
-        print(f"Lightning设备可用: {result}")
+        print(f"Lightning device available: {result}")
         
     except Exception as e:
-        print(f"Lightning设备不可用: {e}")
-        print("建议: 考虑使用Lightning来提升性能")
+        print(f"Lightning device not available: {e}")
+        print("Suggestion: Consider using Lightning to improve performance")
 
 def main():
-    """主检查函数"""
-    print("GaussGAN 量子环境兼容性检查")
+    """Main check function"""
+    print("GaussGAN Quantum Environment Compatibility Check")
     print("=" * 80)
     
     check_torch_cuda()
@@ -226,14 +226,14 @@ def main():
     check_pennylane_lightning()
     
     print("\n" + "=" * 80)
-    print("检查完成!")
+    print("Check complete!")
     print("=" * 80)
     
-    # 最终清理
+    # Final cleanup
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         final_memory = torch.cuda.memory_allocated() / 1024**2
-        print(f"最终GPU内存使用: {final_memory:.1f} MB")
+        print(f"Final GPU memory usage: {final_memory:.1f} MB")
 
 if __name__ == "__main__":
     main()

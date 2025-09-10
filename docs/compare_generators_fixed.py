@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-量子vs古典生成器性能对比分析脚本 (FIXED VERSION)
-用于比较不同生成器类型的性能指标
+Quantum vs Classical Generator Performance Comparison Script (FIXED VERSION)
+For comparing performance metrics of different generator types
 
-修复的问题:
-1. 可视化数组索引错误
-2. 添加MLflow错误处理
-3. 增加指标验证
-4. 改进错误处理和日志记录
+Fixed issues:
+1. Visualization array indexing errors
+2. Added MLflow error handling
+3. Added metrics validation
+4. Improved error handling and logging
 """
 
 import mlflow
@@ -23,26 +23,26 @@ from pathlib import Path
 
 warnings.filterwarnings('ignore')
 
-# 配置日志
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def get_experiment_runs(experiment_name: str, max_runs: int = 1000) -> pd.DataFrame:
-    """获取实验的所有运行记录
+    """Get all run records for an experiment
     
     Args:
-        experiment_name: 实验名称
-        max_runs: 最大返回运行数量，防止内存问题
+        experiment_name: Experiment name
+        max_runs: Maximum number of runs to return, to prevent memory issues
     
     Returns:
-        包含运行数据的DataFrame
+        DataFrame containing run data
     """
     try:
         client = mlflow.tracking.MlflowClient()
         experiment = client.get_experiment_by_name(experiment_name)
         
         if experiment is None:
-            logger.warning(f"实验 '{experiment_name}' 不存在")
+            logger.warning(f"Experiment '{experiment_name}' does not exist")
             return pd.DataFrame()
         
         runs = client.search_runs(
@@ -52,10 +52,10 @@ def get_experiment_runs(experiment_name: str, max_runs: int = 1000) -> pd.DataFr
         )
         
         if not runs:
-            logger.warning(f"实验 '{experiment_name}' 中没有找到运行记录")
+            logger.warning(f"No runs found in experiment '{experiment_name}'")
             return pd.DataFrame()
         
-        # 提取运行数据
+        # Extract run data
         data = []
         for run in runs:
             run_data = {
@@ -67,7 +67,7 @@ def get_experiment_runs(experiment_name: str, max_runs: int = 1000) -> pd.DataFr
                 'duration_seconds': (run.info.end_time - run.info.start_time) / 1000 if run.info.end_time else None
             }
             
-            # 添加关键指标
+            # Add key metrics
             metrics_to_track = [
                 'ValidationStep_FakeData_KLDivergence',
                 'ValidationStep_FakeData_LogLikelihood', 
@@ -85,22 +85,22 @@ def get_experiment_runs(experiment_name: str, max_runs: int = 1000) -> pd.DataFr
             data.append(run_data)
         
         df = pd.DataFrame(data)
-        logger.info(f"成功获取 {len(df)} 条运行记录")
+        logger.info(f"Successfully retrieved {len(df)} run records")
         return df
         
     except Exception as e:
-        logger.error(f"获取实验运行记录失败: {e}")
+        logger.error(f"Failed to get experiment run records: {e}")
         return pd.DataFrame()
 
 def validate_metrics(gen_runs: pd.DataFrame, gen_type: str) -> bool:
-    """验证关键指标是否存在和有效
+    """Validate that key metrics exist and are valid
     
     Args:
-        gen_runs: 生成器运行数据
-        gen_type: 生成器类型
+        gen_runs: Generator run data
+        gen_type: Generator type
     
     Returns:
-        验证是否通过
+        Whether validation passes
     """
     required_metrics = [
         'ValidationStep_FakeData_KLDivergence',
@@ -110,34 +110,34 @@ def validate_metrics(gen_runs: pd.DataFrame, gen_type: str) -> bool:
     issues = []
     for metric in required_metrics:
         if metric not in gen_runs.columns:
-            issues.append(f"缺少指标列 {metric}")
+            issues.append(f"Missing metric column {metric}")
         elif gen_runs[metric].isna().all():
-            issues.append(f"指标 {metric} 全部为空值")
+            issues.append(f"Metric {metric} is all null values")
         elif gen_runs[metric].notna().sum() == 0:
-            issues.append(f"指标 {metric} 没有有效数据")
+            issues.append(f"Metric {metric} has no valid data")
     
     if issues:
-        logger.warning(f"生成器 {gen_type} 数据验证失败: {'; '.join(issues)}")
+        logger.warning(f"Generator {gen_type} data validation failed: {'; '.join(issues)}")
         return False
     
     return True
 
 def analyze_convergence(client, run_id: str) -> Dict:
-    """分析单个运行的收敛特性
+    """Analyze convergence characteristics of a single run
     
     Args:
-        client: MLflow客户端
-        run_id: 运行ID
+        client: MLflow client
+        run_id: Run ID
     
     Returns:
-        收敛分析结果字典
+        Convergence analysis result dictionary
     """
     try:
-        # 获取历史指标
+        # Get historical metrics
         metric_history = client.get_metric_history(run_id, "ValidationStep_FakeData_KLDivergence")
         
         if not metric_history:
-            logger.warning(f"运行 {run_id} 没有KL散度历史数据")
+            logger.warning(f"Run {run_id} has no KL divergence history data")
             return {}
         
         epochs = [m.step for m in metric_history]
@@ -146,7 +146,7 @@ def analyze_convergence(client, run_id: str) -> Dict:
         if not values:
             return {}
         
-        # 计算收敛指标
+        # Calculate convergence metrics
         convergence_info = {
             'final_value': values[-1],
             'best_value': min(values),
@@ -158,18 +158,18 @@ def analyze_convergence(client, run_id: str) -> Dict:
         return convergence_info
         
     except Exception as e:
-        logger.error(f"分析运行 {run_id} 收敛性失败: {e}")
+        logger.error(f"Failed to analyze convergence for run {run_id}: {e}")
         return {}
 
 def safe_calculate_percentage_diff(val1: float, val2: float) -> Optional[float]:
-    """安全计算百分比差异
+    """Safely calculate percentage difference
     
     Args:
-        val1: 基准值
-        val2: 比较值
+        val1: Baseline value
+        val2: Comparison value
     
     Returns:
-        百分比差异，如果计算失败返回None
+        Percentage difference, returns None if calculation fails
     """
     try:
         if pd.isna(val1) or pd.isna(val2):
@@ -182,269 +182,269 @@ def safe_calculate_percentage_diff(val1: float, val2: float) -> Optional[float]:
 
 def compare_generators(experiment_name: str = "quantum_vs_classical_comparison", 
                       output_dir: str = ".") -> Optional[pd.DataFrame]:
-    """主对比函数
+    """Main comparison function
     
     Args:
-        experiment_name: 实验名称
-        output_dir: 输出目录
+        experiment_name: Experiment name
+        output_dir: Output directory
     
     Returns:
-        对比结果DataFrame，失败时返回None
+        Comparison results DataFrame, returns None on failure
     """
     print("=" * 80)
-    print("量子 vs 古典生成器性能对比分析")
+    print("Quantum vs Classical Generator Performance Comparison Analysis")
     print("=" * 80)
     
-    # 确保输出目录存在
+    # Ensure output directory exists
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
-    # 获取运行数据
+    # Get run data
     df = get_experiment_runs(experiment_name)
     
     if df.empty:
-        logger.error("没有找到实验数据，请先运行实验")
+        logger.error("No experiment data found, please run experiments first")
         return None
     
-    # 按生成器类型分组
+    # Group by generator type
     generator_types = df['generator_type'].unique()
-    print(f"\n找到 {len(generator_types)} 种生成器类型: {list(generator_types)}")
-    print(f"总共 {len(df)} 次运行\n")
+    print(f"\nFound {len(generator_types)} generator types: {list(generator_types)}")
+    print(f"Total {len(df)} runs\n")
     
-    # 创建对比表格
+    # Create comparison table
     comparison_results = []
+    client = mlflow.tracking.MlflowClient()
     
-    try:
-        client = mlflow.tracking.MlflowClient()
+    for gen_type in generator_types:
+        gen_runs = df[df['generator_type'] == gen_type]
         
-        for gen_type in generator_types:
-            gen_runs = df[df['generator_type'] == gen_type]
+        if gen_runs.empty:
+            continue
             
-            # 验证数据质量
+        try:
+            # Validate data quality
             if not validate_metrics(gen_runs, gen_type):
-                logger.warning(f"跳过生成器类型 {gen_type} 由于数据质量问题")
+                logger.warning(f"Skipping generator type {gen_type} due to data quality issues")
                 continue
             
-            # 计算平均指标（只使用有效数据）
+            # Calculate average metrics (using only valid data)
             result = {
-                '生成器类型': gen_type,
-                '运行次数': len(gen_runs),
-                '平均训练时间(秒)': gen_runs['duration_seconds'].mean(),
-                'KL散度(平均)': gen_runs['ValidationStep_FakeData_KLDivergence'].mean(),
-                'KL散度(最佳)': gen_runs['ValidationStep_FakeData_KLDivergence'].min(),
-                '对数似然(平均)': gen_runs['ValidationStep_FakeData_LogLikelihood'].mean(),
-                'Wasserstein距离': gen_runs['ValidationStep_FakeData_WassersteinDistance'].mean(),
-                'MMD距离': gen_runs['ValidationStep_FakeData_MMDDistance'].mean(),
+                'Generator Type': gen_type,
+                'Run Count': len(gen_runs),
+                'Avg Training Time (s)': gen_runs['duration_seconds'].mean(),
+                'KL Divergence (avg)': gen_runs['ValidationStep_FakeData_KLDivergence'].mean(),
+                'KL Divergence (best)': gen_runs['ValidationStep_FakeData_KLDivergence'].min(),
+                'Log Likelihood (avg)': gen_runs['ValidationStep_FakeData_LogLikelihood'].mean(),
+                'Wasserstein Distance': gen_runs['ValidationStep_FakeData_WassersteinDistance'].mean(),
+                'MMD Distance': gen_runs['ValidationStep_FakeData_MMDDistance'].mean(),
             }
             
-            # 获取最佳运行的收敛信息
-            valid_kl_runs = gen_runs.dropna(subset=['ValidationStep_FakeData_KLDivergence'])
-            if not valid_kl_runs.empty:
-                best_run = valid_kl_runs.nsmallest(1, 'ValidationStep_FakeData_KLDivergence').iloc[0]
-                convergence = analyze_convergence(client, best_run['run_id'])
+            # Get convergence info for best run
+            best_run_id = gen_runs.nsmallest(1, 'ValidationStep_FakeData_KLDivergence')['run_id'].values[0]
+            convergence = analyze_convergence(client, best_run_id)
+            
+            if convergence:
                 result.update({
-                    '收敛epochs': convergence.get('epochs_to_best', 'N/A'),
-                    '改进率': convergence.get('improvement_rate', 'N/A'),
-                    '最终稳定性': convergence.get('stability', 'N/A')
+                    'Convergence Epochs': convergence.get('epochs_to_best', 'N/A'),
+                    'Improvement Rate': convergence.get('improvement_rate', 'N/A'),
+                    'Final Stability': convergence.get('stability', 'N/A')
                 })
             else:
                 result.update({
-                    '收敛epochs': 'N/A',
-                    '改进率': 'N/A',
-                    '最终稳定性': 'N/A'
+                    'Convergence Epochs': 'N/A',
+                    'Improvement Rate': 'N/A',
+                    'Final Stability': 'N/A'
                 })
             
             comparison_results.append(result)
-        
-    except Exception as e:
-        logger.error(f"生成器对比分析失败: {e}")
-        return None
+            
+        except Exception as e:
+            logger.error(f"Generator comparison analysis failed: {e}")
+            continue
     
     if not comparison_results:
-        logger.error("没有有效的对比结果")
+        logger.error("No valid comparison results")
         return None
     
-    # 创建对比DataFrame
+    # Create comparison DataFrame
     comparison_df = pd.DataFrame(comparison_results)
     
-    # 打印详细对比
-    print("\n" + "="*80)
-    print("性能对比结果")
-    print("="*80)
+    # Print detailed comparison
+    print("-" * 80)
+    print("Performance Comparison Results")
+    print("-" * 80)
     
-    # 训练效率对比
-    print("\n📊 训练效率对比:")
+    # Training efficiency comparison
+    print("\n📊 Training Efficiency Comparison:")
     print("-" * 40)
     for _, row in comparison_df.iterrows():
-        duration = row['平均训练时间(秒)']
+        duration = row['Avg Training Time (s)']
         if pd.notna(duration):
-            print(f"{row['生成器类型']:20s}: {duration:.2f} 秒")
+            print(f"{row['Generator Type']:20s}: {duration:.2f} seconds")
         else:
-            print(f"{row['生成器类型']:20s}: N/A")
+            print(f"{row['Generator Type']:20s}: N/A")
     
-    # 生成质量对比
-    print("\n📈 生成质量对比 (越低越好):")
+    # Generation quality comparison
+    print("\n📈 Generation Quality Comparison (lower is better):")
     print("-" * 40)
-    print(f"{'指标':<20} {'古典生成器':<15} {'量子生成器':<15} {'差异':<15}")
+    print(f"{'Metric':<20} {'Classical Generator':<15} {'Quantum Generator':<15} {'Difference':<15}")
     print("-" * 65)
     
-    metrics_to_compare = ['KL散度(最佳)', 'Wasserstein距离', 'MMD距离']
+    metrics_to_compare = ['KL Divergence (best)', 'Wasserstein Distance', 'MMD Distance']
     
     for metric in metrics_to_compare:
-        classical_val = comparison_df[comparison_df['生成器类型'].str.contains('classical', na=False)][metric].values
-        quantum_val = comparison_df[comparison_df['生成器类型'].str.contains('quantum', na=False)][metric].values
+        classical_val = comparison_df[comparison_df['Generator Type'].str.contains('classical', na=False)][metric].values
+        quantum_val = comparison_df[comparison_df['Generator Type'].str.contains('quantum', na=False)][metric].values
         
         if len(classical_val) > 0 and len(quantum_val) > 0:
             c_val = classical_val[0]
             q_val = quantum_val[0]
             diff = safe_calculate_percentage_diff(c_val, q_val)
             
-            c_str = f"{c_val:.4f}" if pd.notna(c_val) else "N/A"
-            q_str = f"{q_val:.4f}" if pd.notna(q_val) else "N/A"
-            diff_str = f"{diff:+.1f}%" if diff is not None else "N/A"
-            
-            print(f"{metric:<20} {c_str:<15} {q_str:<15} {diff_str}")
+            if pd.notna(c_val) and pd.notna(q_val):
+                diff_str = f"{diff:.1f}%" if diff is not None else "N/A"
+                print(f"{metric:<20} {c_val:<15.4f} {q_val:<15.4f} {diff_str:<15}")
     
-    # 收敛速度对比
-    print("\n⚡ 收敛速度对比:")
+    # Convergence speed comparison
+    print("\n⚡ Convergence Speed Comparison:")
     print("-" * 40)
     for _, row in comparison_df.iterrows():
-        print(f"{row['生成器类型']:20s}: {row['收敛epochs']} epochs")
+        print(f"{row['Generator Type']:20s}: {row['Convergence Epochs']} epochs")
     
-    # 性能比率计算
-    print("\n" + "="*80)
-    print("性能比率分析")
-    print("="*80)
+    # Performance ratio calculation
+    print("\n" + "=" * 80)
+    print("Performance Ratio Analysis")
+    print("=" * 80)
     
-    classical_time = comparison_df[comparison_df['生成器类型'].str.contains('classical', na=False)]['平均训练时间(秒)'].values
-    quantum_time = comparison_df[comparison_df['生成器类型'].str.contains('quantum', na=False)]['平均训练时间(秒)'].values
+    classical_time = comparison_df[comparison_df['Generator Type'].str.contains('classical', na=False)]['Avg Training Time (s)'].values
+    quantum_time = comparison_df[comparison_df['Generator Type'].str.contains('quantum', na=False)]['Avg Training Time (s)'].values
     
     if len(classical_time) > 0 and len(quantum_time) > 0:
-        c_time, q_time = classical_time[0], quantum_time[0]
+        c_time = classical_time[0]
+        q_time = quantum_time[0]
         if pd.notna(c_time) and pd.notna(q_time) and c_time > 0:
             time_ratio = q_time / c_time
-            print(f"\n⏱️  时间比率: 量子生成器比古典生成器慢 {time_ratio:.1f}x")
+            print(f"\n⏱️  Time Ratio: Quantum generator is {time_ratio:.1f}x slower than classical generator")
         else:
-            print("\n⏱️  时间比率: 无法计算（数据不完整）")
+            print("\n⏱️  Time Ratio: Cannot calculate (incomplete data)")
     
-    # 创建可视化
+    # Create visualization
     try:
-        create_visualization(comparison_df, output_path)
+        create_comparison_charts(comparison_df, output_path)
     except Exception as e:
-        logger.error(f"可视化创建失败: {e}")
+        logger.error(f"Visualization creation failed: {e}")
     
-    # 保存结果
+    # Save results
+    csv_path = output_path / "generator_comparison_results.csv"
     try:
-        csv_path = output_path / 'generator_comparison_results.csv'
         comparison_df.to_csv(csv_path, index=False)
-        print(f"\n💾 结果已保存到: {csv_path}")
+        print(f"\n💾 Results saved to: {csv_path}")
     except Exception as e:
-        logger.error(f"保存CSV文件失败: {e}")
+        logger.error(f"Failed to save CSV file: {e}")
     
     return comparison_df
 
-def create_visualization(comparison_df: pd.DataFrame, output_path: Path):
-    """创建对比可视化图表
+def create_comparison_charts(comparison_df: pd.DataFrame, output_path: Path):
+    """Create comparison visualization charts
     
     Args:
-        comparison_df: 对比数据DataFrame
-        output_path: 输出路径
+        comparison_df: Comparison data DataFrame
+        output_path: Output path
     """
     try:
         fig, axes = plt.subplots(2, 2, figsize=(12, 10))
         
-        # 训练时间对比 - 修复数组索引
-        ax = axes[0][0]  # 修复: 从 axes[0, 0] 改为 axes[0][0]
-        valid_data = comparison_df.dropna(subset=['平均训练时间(秒)'])
+        # Training time comparison - Fixed array indexing
+        ax = axes[0][0]  # Fix: Changed from axes[0, 0] to axes[0][0]
+        valid_data = comparison_df.dropna(subset=['Avg Training Time (s)'])
         if not valid_data.empty:
-            ax.bar(valid_data['生成器类型'], valid_data['平均训练时间(秒)'])
-        ax.set_title('训练时间对比')
-        ax.set_ylabel('时间 (秒)')
-        ax.set_xlabel('生成器类型')
+            ax.bar(valid_data['Generator Type'], valid_data['Avg Training Time (s)'])
+        ax.set_title('Training Time Comparison')
+        ax.set_ylabel('Time (seconds)')
+        ax.set_xlabel('Generator Type')
         ax.tick_params(axis='x', rotation=45)
         
-        # KL散度对比 - 修复数组索引
-        ax = axes[0][1]  # 修复: 从 axes[0, 1] 改为 axes[0][1]
-        valid_data = comparison_df.dropna(subset=['KL散度(最佳)'])
+        # KL divergence comparison - Fixed array indexing
+        ax = axes[0][1]  # Fix: Changed from axes[0, 1] to axes[0][1]
+        valid_data = comparison_df.dropna(subset=['KL Divergence (best)'])
         if not valid_data.empty:
-            ax.bar(valid_data['生成器类型'], valid_data['KL散度(最佳)'])
-        ax.set_title('KL散度对比 (越低越好)')
-        ax.set_ylabel('KL散度')
-        ax.set_xlabel('生成器类型')
+            ax.bar(valid_data['Generator Type'], valid_data['KL Divergence (best)'])
+        ax.set_title('KL Divergence Comparison (lower is better)')
+        ax.set_ylabel('KL Divergence')
+        ax.set_xlabel('Generator Type')
         ax.tick_params(axis='x', rotation=45)
         
-        # Wasserstein距离对比 - 修复数组索引
-        ax = axes[1][0]  # 修复: 从 axes[1, 0] 改为 axes[1][0]
-        valid_data = comparison_df.dropna(subset=['Wasserstein距离'])
+        # Wasserstein distance comparison - Fixed array indexing
+        ax = axes[1][0]  # Fix: Changed from axes[1, 0] to axes[1][0]
+        valid_data = comparison_df.dropna(subset=['Wasserstein Distance'])
         if not valid_data.empty:
-            ax.bar(valid_data['生成器类型'], valid_data['Wasserstein距离'])
-        ax.set_title('Wasserstein距离对比 (越低越好)')
-        ax.set_ylabel('Wasserstein距离')
-        ax.set_xlabel('生成器类型')
+            ax.bar(valid_data['Generator Type'], valid_data['Wasserstein Distance'])
+        ax.set_title('Wasserstein Distance Comparison (lower is better)')
+        ax.set_ylabel('Wasserstein Distance')
+        ax.set_xlabel('Generator Type')
         ax.tick_params(axis='x', rotation=45)
         
-        # MMD距离对比 - 修复数组索引
-        ax = axes[1][1]  # 修复: 从 axes[1, 1] 改为 axes[1][1]
-        valid_data = comparison_df.dropna(subset=['MMD距离'])
+        # MMD distance comparison - Fixed array indexing
+        ax = axes[1][1]  # Fix: Changed from axes[1, 1] to axes[1][1]
+        valid_data = comparison_df.dropna(subset=['MMD Distance'])
         if not valid_data.empty:
-            ax.bar(valid_data['生成器类型'], valid_data['MMD距离'])
-        ax.set_title('MMD距离对比 (越低越好)')
-        ax.set_ylabel('MMD距离')
-        ax.set_xlabel('生成器类型')
+            ax.bar(valid_data['Generator Type'], valid_data['MMD Distance'])
+        ax.set_title('MMD Distance Comparison (lower is better)')
+        ax.set_ylabel('MMD Distance')
+        ax.set_xlabel('Generator Type')
         ax.tick_params(axis='x', rotation=45)
         
         plt.tight_layout()
         
-        # 保存图片
-        png_path = output_path / 'generator_comparison_plots.png'
-        plt.savefig(png_path, dpi=300, bbox_inches='tight')
-        print(f"📊 可视化图表已保存到: {png_path}")
+        # Save image
+        png_path = output_path / "generator_comparison_charts.png"
+        plt.savefig(png_path, dpi=150, bbox_inches='tight')
+        print(f"📊 Visualization charts saved to: {png_path}")
         
-        # 清理matplotlib资源
+        # Clean up matplotlib resources
         plt.close()
         
     except Exception as e:
-        logger.error(f"创建可视化图表失败: {e}")
-        if 'fig' in locals():
-            plt.close()
+        logger.error(f"Failed to create visualization charts: {e}")
+
 
 if __name__ == "__main__":
-    # 运行对比分析
+    # Run comparison analysis
     try:
         results = compare_generators()
         
         if results is not None and not results.empty:
-            print("\n" + "="*80)
-            print("🎯 关键发现:")
-            print("="*80)
+            print("\n" + "=" * 80)
+            print("🎯 Key Findings:")
+            print("=" * 80)
             
-            # 计算关键指标
-            classical_rows = results[results['生成器类型'].str.contains('classical', na=False)]
-            quantum_rows = results[results['生成器类型'].str.contains('quantum', na=False)]
+            # Calculate key metrics
+            classical_rows = results[results['Generator Type'].str.contains('classical', na=False)]
+            quantum_rows = results[results['Generator Type'].str.contains('quantum', na=False)]
             
             if not classical_rows.empty and not quantum_rows.empty:
-                c_kl = classical_rows['KL散度(最佳)'].values[0]
-                q_kl = quantum_rows['KL散度(最佳)'].values[0]
-                c_time = classical_rows['平均训练时间(秒)'].values[0]
-                q_time = quantum_rows['平均训练时间(秒)'].values[0]
+                c_kl = classical_rows['KL Divergence (best)'].values[0]
+                q_kl = quantum_rows['KL Divergence (best)'].values[0]
+                c_time = classical_rows['Avg Training Time (s)'].values[0]
+                q_time = quantum_rows['Avg Training Time (s)'].values[0]
                 
                 if pd.notna(c_time) and pd.notna(q_time) and c_time > 0:
-                    print(f"\n1. 量子生成器训练时间是古典生成器的 {q_time/c_time:.1f} 倍")
+                    print(f"\n1. Quantum generator training time is {q_time/c_time:.1f}x that of classical generator")
                 
                 if pd.notna(c_kl) and pd.notna(q_kl):
                     if q_kl < c_kl:
-                        print(f"2. 量子生成器的KL散度比古典生成器低 {(c_kl-q_kl)/c_kl*100:.1f}% (更好)")
+                        print(f"2. Quantum generator's KL divergence is {(c_kl-q_kl)/c_kl*100:.1f}% lower than classical (better)")
                     else:
-                        print(f"2. 量子生成器的KL散度比古典生成器高 {(q_kl-c_kl)/c_kl*100:.1f}% (更差)")
+                        print(f"2. Quantum generator's KL divergence is {(q_kl-c_kl)/c_kl*100:.1f}% higher than classical (worse)")
                 
-                print("\n这些数值化结果直接回答了Ale的问题：")
-                print("✅ 我们现在可以精确测量古典和量子生成器的性能差异")
-                print("✅ 不仅有可视化对比，还有具体的数值指标")
+                print("\nThese quantitative results directly answer Ale's questions:")
+                print("✅ We can now precisely measure the performance difference between classical and quantum generators")
+                print("✅ Not only do we have visual comparisons, but also specific numerical metrics")
             else:
-                print("未找到足够的古典和量子生成器数据进行对比")
+                print("Insufficient classical and quantum generator data found for comparison")
         else:
-            print("对比分析失败或没有有效数据")
+            print("Comparison analysis failed or no valid data")
             
     except Exception as e:
-        logger.error(f"程序执行失败: {e}")
-        print("程序执行过程中发生错误，请检查日志")
+        logger.error(f"Program execution failed: {e}")
+        print("An error occurred during program execution, please check the logs")

@@ -182,8 +182,6 @@ class GaussGan(LightningModule):
         
         # Rest of the method remains unchanged
         csv_string = "x,y\n" + "\n".join([f"{row[0]},{row[1]}" for row in fake_data])
-        
-        # 方案1: 尝试MLflow记录
         mlflow_success = False
         try:
             self.logger.experiment.log_text(
@@ -195,8 +193,6 @@ class GaussGan(LightningModule):
             print(f"Validation step completed for epoch {self.current_epoch} - CSV logged to MLflow")
         except Exception as e:
             print(f"MLflow CSV logging failed: {e}")
-        
-        # 方案2: 如果MLflow失败，保存到本地文件
         if not mlflow_success:
             try:
                 import os
@@ -229,7 +225,6 @@ class GaussGan(LightningModule):
             # This method primarily logs the convergence information
 
     def _generate_fake_data(self, batch_size):
-        # 添加时间测量
         start_time = time.time()
         
         # Convert batch_size from tensor to int if needed
@@ -238,10 +233,7 @@ class GaussGan(LightningModule):
 
         # Only pass batch_size to the generator
         fake_gaussians = self.generator(batch_size)
-        
-        # 记录时间
         elapsed = time.time() - start_time
-        # 每10个批次记录一次时间
         if hasattr(self, 'step_counter'):
             self.step_counter += 1
         else:
@@ -290,16 +282,11 @@ class GaussGan(LightningModule):
 
         if self.killer:
             rl_weight = getattr(self, "rl_weight", 1.0)
-            
-            # 分别计算负 x 轴和正 x 轴点的惩罚
             neg_x_mask = x_fake[:, 0] < 0
             
             if torch.any(neg_x_mask):
-                # 对负 x 轴的点施加更大惩罚
                 neg_x_points = x_fake[neg_x_mask]
                 neg_x_penalty = -self._apply_predictor(neg_x_points).mean() * rl_weight * 5.0
-                
-                # 对正 x 轴的点保持正常奖励
                 pos_x_mask = ~neg_x_mask
                 if torch.any(pos_x_mask):
                     pos_x_points = x_fake[pos_x_mask]
@@ -309,7 +296,6 @@ class GaussGan(LightningModule):
                     
                 rl_loss = neg_x_penalty + pos_x_reward
             else:
-                # 所有点都在正 x 轴，使用正常奖励
                 rl_loss = -self._apply_predictor(x_fake).mean() * rl_weight
         else:
             rl_loss = 0
@@ -318,13 +304,9 @@ class GaussGan(LightningModule):
         return g_loss
 
     def _compute_predictor_loss(self, batch):
-        x, _ = batch  # 忽略原始标签
+        x, _ = batch
         v = self._apply_predictor(x)
-        
-        # 创建新标签：x > 0 的点为 1，x < 0 的点为 0
         targets = (x[:, 0] > 0).float().unsqueeze(1)
-        
-        # 使用 BCE 损失（因为输出经过了 sigmoid）
         #p_loss = nn.HuberLoss()(v, r)
         p_loss = F.binary_cross_entropy(v, targets)
         return p_loss, {"Predictor_loss": p_loss}
